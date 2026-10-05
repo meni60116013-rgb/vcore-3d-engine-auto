@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vcore-3d-v1';
+const CACHE_NAME = 'vcore-cad-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -8,10 +8,10 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (e) => {
+  self.skipWaiting();
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (e) => {
@@ -19,28 +19,27 @@ self.addEventListener('activate', (e) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
-          if (key !== CACHE_NAME) return caches.delete(key);
+          if (key !== CACHE_NAME) {
+            console.log('[SW] Eliminando caché obsoleta:', key);
+            return caches.delete(key);
+          }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', (e) => {
+  // Network First con fallback a Cache para evitar congelamientos por versiones previas
   e.respondWith(
-    caches.match(e.request).then((cachedResponse) => {
-      if (cachedResponse) return cachedResponse;
-      return fetch(e.request).then((response) => {
-        if (!response || response.status !== 200 || response.type !== 'basic') {
-          return response;
+    fetch(e.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          const clone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
         }
-        const responseToCache = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(e.request, responseToCache);
-        });
-        return response;
-      });
-    })
+        return networkResponse;
+      })
+      .catch(() => caches.match(e.request))
   );
 });
