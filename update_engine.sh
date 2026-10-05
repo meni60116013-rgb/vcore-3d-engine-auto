@@ -1,3 +1,8 @@
+#!/usr/bin/env bash
+set -e
+
+echo "[1/3] Actualizando motor de geometría paramétrica..."
+cat << 'CS' > src/geometryEngine.js
 export class AssemblyComponent {
   constructor(id, name, type, params = {}) {
     this.id = id;
@@ -44,3 +49,27 @@ export class MachineryAssembly {
     return { totalMass: mass.toFixed(3), totalVolume: volume.toFixed(2), count: this.components.size };
   }
 }
+CS
+
+echo "[2/3] Actualizando pruebas unitarias..."
+cat << 'CS' > test/engine.test.js
+import assert from 'node:assert';
+import test from 'node:test';
+import { AssemblyComponent, MachineryAssembly } from '../src/geometryEngine.js';
+
+test('Calculo de ensamblaje multipieza', () => {
+  const asm = new MachineryAssembly();
+  asm.addComponent(new AssemblyComponent('1', 'Tubo Chasis', 'tubular', { dOut: 38.1, thickness: 2, length: 500 }));
+  asm.addComponent(new AssemblyComponent('2', 'Eje Principal', 'solid_cylinder', { diameter: 20, length: 300 }));
+  
+  const m = asm.getTotalMetrics();
+  assert.strictEqual(m.count, 2);
+  assert.ok(parseFloat(m.totalMass) > 0);
+});
+CS
+
+echo "[3/3] Ejecutando pruebas y haciendo Push..."
+npm test
+git add .
+git commit -m "feat: transformar motor en ensamblador de maquinaria 3D parametrico"
+git push origin main
