@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VCORE 3D Engine</title>
+  <style>
+    :root { --bg: #0d0f12; --panel: #161b22; --accent: #ff3b30; --text: #f0f6fc; --border: #30363d; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: monospace; }
+    body { background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+    header { padding: 12px 20px; background: var(--panel); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; }
+    main { flex: 1; display: grid; grid-template-columns: 300px 1fr; height: calc(100vh - 45px); }
+    .panel { padding: 15px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+    input { background: #0d0f12; border: 1px solid var(--border); color: var(--text); padding: 8px; border-radius: 4px; width: 100%; }
+    .val { color: var(--accent); font-weight: bold; float: right; }
+    #viewport { width: 100%; height: 100%; background: #08090b; }
+  </style>
+  <script type="importmap">
+    { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+  </script>
+</head>
+<body>
+  <header><h1 style="color:var(--accent);font-size:1rem;">VCORE 3D AUTO-DEPLOY</h1></header>
+  <main>
+    <div class="panel">
+      <label>Diámetro (mm)<input type="number" id="dOut" value="38.1"></label>
+      <label>Espesor (mm)<input type="number" id="thickness" value="2.0"></label>
+      <label>Longitud (mm)<input type="number" id="length" value="400"></label>
+      <hr style="border-color:var(--border)">
+      <div>Área: <span class="val" id="resArea">0</span></div>
+      <div>Masa: <span class="val" id="resMass">0</span></div>
+      <div>Momento J: <span class="val" id="resJ">0</span></div>
+    </div>
+    <div id="viewport"></div>
+  </main>
+  <script type="module">
+    import * as THREE from 'three';
+    import { TubularProfileEngine } from './src/geometryEngine.js';
+    const container = document.getElementById('viewport');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    container.appendChild(renderer.domElement);
+    const light = new THREE.DirectionalLight(0xff3b30, 2);
+    light.position.set(50, 100, 50);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.8), light);
+    camera.position.set(0, 100, 300); camera.lookAt(0,0,0);
+    let mesh;
+    function update() {
+      const e = new TubularProfileEngine(document.getElementById('dOut').value, document.getElementById('thickness').value, document.getElementById('length').value);
+      if (e.isValidGeometry()) {
+        const r = e.getAnalysisReport();
+        document.getElementById('resArea').textContent = r.area_mm2 + ' mm²';
+        document.getElementById('resMass').textContent = r.mass_kg + ' kg';
+        document.getElementById('resJ').textContent = r.polarMoment_mm4 + ' mm⁴';
+        if (mesh) scene.remove(mesh);
+        const shape = new THREE.Shape();
+        shape.absarc(0, 0, e.dOut/2, 0, Math.PI*2, false);
+        const hole = new THREE.Path();
+        hole.absarc(0, 0, Math.max(0.1, e.dIn/2), 0, Math.PI*2, true);
+        shape.holes.push(hole);
+        const geo = new THREE.ExtrudeGeometry(shape, { depth: e.length, bevelEnabled: false });
+        geo.center();
+        mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8 }));
+        scene.add(mesh);
+      }
+    }
+    document.querySelectorAll('input').forEach(i => i.addEventListener('input', update));
+    function anim() { requestAnimationFrame(anim); if(mesh) mesh.rotation.y += 0.01; renderer.render(scene, camera); }
+    update(); anim();
+  </script>
+</body>
+</html>

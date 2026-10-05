@@ -1,0 +1,1 @@
+{ "name": "vcore-3d-engine-auto", "version": "1.0.0", "type": "module", "scripts": { "test": "node --test test/engine.test.js" } }
