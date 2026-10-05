@@ -1,12 +1,20 @@
 name: End-to-End Auto Deploy
-on: [push]
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
 jobs:
   test-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: '20' }
+        with:
+          node-version: '20'
       - run: npm test
       - uses: actions/upload-artifact@v4
-        with: { name: build-artifact, path: . }
+        with:
+          name: build-artifact
+          path: .
