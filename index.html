@@ -5,18 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#161b22">
   <link rel="manifest" href="manifest.json">
-  <title>VCORE 3D Engine</title>
+  <title>VCORE 3D CAD Assembly</title>
   <style>
     :root { --bg: #0d0f12; --panel: #161b22; --accent: #ff3b30; --text: #f0f6fc; --border: #30363d; }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: monospace; }
     body { background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
-    header { padding: 12px 20px; background: var(--panel); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; }
-    main { flex: 1; display: grid; grid-template-columns: 300px 1fr; height: calc(100vh - 45px); }
+    header { padding: 12px 20px; background: var(--panel); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    main { flex: 1; display: grid; grid-template-columns: 340px 1fr; height: calc(100vh - 45px); }
     @media (max-width: 768px) { main { grid-template-columns: 1fr; grid-template-rows: auto 1fr; overflow-y: auto; } }
-    .panel { padding: 15px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
-    input { background: #0d0f12; border: 1px solid var(--border); color: var(--text); padding: 8px; border-radius: 4px; width: 100%; }
+    .panel { padding: 15px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+    input, select, button { background: #0d0f12; border: 1px solid var(--border); color: var(--text); padding: 8px; border-radius: 4px; width: 100%; font-family: monospace; }
+    button { background: var(--accent); color: #fff; font-weight: bold; cursor: pointer; border: none; margin-top: 5px; }
+    button:active { opacity: 0.8; }
     .val { color: var(--accent); font-weight: bold; float: right; }
     #viewport { width: 100%; height: 100%; background: #08090b; }
+    .tree-item { background: #0d0f12; padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.8rem; }
   </style>
   <script type="importmap">
     { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
@@ -24,64 +27,138 @@
 </head>
 <body>
   <header>
-    <h1 style="color:var(--accent);font-size:1rem;">VCORE 3D ENGINE (PWA)</h1>
-    <span style="font-size:0.75rem;color:#3fb950;">● Offline Ready</span>
+    <h1 style="color:var(--accent);font-size:1rem;">VCORE 3D CAD ENGINE</h1>
+    <span style="font-size:0.75rem;color:#3fb950;">● PWA Active</span>
   </header>
   <main>
     <div class="panel">
-      <label>Diámetro (mm)<input type="number" id="dOut" value="38.1"></label>
-      <label>Espesor (mm)<input type="number" id="thickness" value="2.0"></label>
-      <label>Longitud (mm)<input type="number" id="length" value="400"></label>
+      <h3>Añadir Componente</h3>
+      <label>Tipo
+        <select id="compType">
+          <option value="tubular">Tubo Perfil</option>
+          <option value="solid_cylinder">Eje Sólido</option>
+          <option value="plate">Placa / Base</option>
+        </select>
+      </label>
+      <label>Dim 1 (Diámetro/Ancho mm)<input type="number" id="p1" value="38.1"></label>
+      <label>Dim 2 (Espesor/Alto mm)<input type="number" id="p2" value="2.0"></label>
+      <label>Dim 3 (Largo/Espesor mm)<input type="number" id="p3" value="400"></label>
+      
+      <label>Posición X / Y / Z
+        <div style="display:flex;gap:4px;">
+          <input type="number" id="posX" value="0">
+          <input type="number" id="posY" value="0">
+          <input type="number" id="posZ" value="0">
+        </div>
+      </label>
+
+      <button id="btnAdd">Añadir al Ensamblaje</button>
       <hr style="border-color:var(--border)">
-      <div>Área: <span class="val" id="resArea">0</span></div>
-      <div>Masa: <span class="val" id="resMass">0</span></div>
-      <div>Momento J: <span class="val" id="resJ">0</span></div>
+      
+      <div>Piezas: <span class="val" id="resCount">0</span></div>
+      <div>Masa Total: <span class="val" id="resMass">0 kg</span></div>
+      <div>Volumen: <span class="val" id="resVol">0 mm³</span></div>
+      
+      <hr style="border-color:var(--border)">
+      <h3>Árbol de Piezas</h3>
+      <div id="tree" style="display:flex;flex-direction:column;gap:6px;"></div>
     </div>
     <div id="viewport"></div>
   </main>
+
   <script type="module">
     import * as THREE from 'three';
-    import { TubularProfileEngine } from './src/geometryEngine.js';
-    
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch((err) => console.error('SW Registration Failed:', err));
-      });
-    }
+    import { AssemblyComponent, MachineryAssembly } from './src/geometryEngine.js';
 
+    const assembly = new MachineryAssembly();
     const container = document.getElementById('viewport');
+    
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 5000);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(container.clientWidth, container.clientHeight);
     container.appendChild(renderer.domElement);
-    const light = new THREE.DirectionalLight(0xff3b30, 2);
-    light.position.set(50, 100, 50);
-    scene.add(new THREE.AmbientLight(0xffffff, 0.8), light);
-    camera.position.set(0, 100, 300); camera.lookAt(0,0,0);
-    let mesh;
-    function update() {
-      const e = new TubularProfileEngine(document.getElementById('dOut').value, document.getElementById('thickness').value, document.getElementById('length').value);
-      if (e.isValidGeometry()) {
-        const r = e.getAnalysisReport();
-        document.getElementById('resArea').textContent = r.area_mm2 + ' mm²';
-        document.getElementById('resMass').textContent = r.mass_kg + ' kg';
-        document.getElementById('resJ').textContent = r.polarMoment_mm4 + ' mm⁴';
-        if (mesh) scene.remove(mesh);
-        const shape = new THREE.Shape();
-        shape.absarc(0, 0, e.dOut/2, 0, Math.PI*2, false);
-        const hole = new THREE.Path();
-        hole.absarc(0, 0, Math.max(0.1, e.dIn/2), 0, Math.PI*2, true);
-        shape.holes.push(hole);
-        const geo = new THREE.ExtrudeGeometry(shape, { depth: e.length, bevelEnabled: false });
-        geo.center();
-        mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8 }));
-        scene.add(mesh);
-      }
+
+    const grid = new THREE.GridHelper(1000, 40, 0xff3b30, 0x30363d);
+    grid.position.y = -100;
+    scene.add(grid);
+
+    const light = new THREE.DirectionalLight(0xffffff, 2);
+    light.position.set(200, 400, 200);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6), light);
+    camera.position.set(300, 300, 500);
+    camera.lookAt(0, 0, 0);
+
+    let meshes = new Map();
+
+    function update3D() {
+      meshes.forEach(m => scene.remove(m));
+      meshes.clear();
+
+      const tree = document.getElementById('tree');
+      tree.innerHTML = '';
+
+      assembly.components.forEach((comp) => {
+        let geo;
+        if (comp.type === 'tubular') {
+          const shape = new THREE.Shape();
+          shape.absarc(0, 0, comp.params.dOut/2, 0, Math.PI*2, false);
+          const hole = new THREE.Path();
+          hole.absarc(0, 0, Math.max(0.1, (comp.params.dOut - 2*comp.params.thickness)/2), 0, Math.PI*2, true);
+          shape.holes.push(hole);
+          geo = new THREE.ExtrudeGeometry(shape, { depth: comp.params.length, bevelEnabled: false });
+        } else if (comp.type === 'solid_cylinder') {
+          geo = new THREE.CylinderGeometry(comp.params.diameter/2, comp.params.diameter/2, comp.params.length, 32);
+        } else if (comp.type === 'plate') {
+          geo = new THREE.BoxGeometry(comp.params.width, comp.params.height, comp.params.thickness);
+        }
+
+        if (geo) {
+          geo.center();
+          const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.7, roughness: 0.3 }));
+          mesh.position.set(comp.position.x, comp.position.y, comp.position.z);
+          scene.add(mesh);
+          meshes.set(comp.id, mesh);
+        }
+
+        const item = document.createElement('div');
+        item.className = 'tree-item';
+        item.textContent = `${comp.name} [${comp.type}]`;
+        tree.appendChild(item);
+      });
+
+      const metrics = assembly.getTotalMetrics();
+      document.getElementById('resCount').textContent = metrics.count;
+      document.getElementById('resMass').textContent = metrics.totalMass + ' kg';
+      document.getElementById('resVol').textContent = metrics.totalVolume + ' mm³';
     }
-    document.querySelectorAll('input').forEach(i => i.addEventListener('input', update));
-    function anim() { requestAnimationFrame(anim); if(mesh) mesh.rotation.y += 0.01; renderer.render(scene, camera); }
-    update(); anim();
+
+    document.getElementById('btnAdd').addEventListener('click', () => {
+      const type = document.getElementById('compType').value;
+      const p1 = parseFloat(document.getElementById('p1').value);
+      const p2 = parseFloat(document.getElementById('p2').value);
+      const p3 = parseFloat(document.getElementById('p3').value);
+      const posX = parseFloat(document.getElementById('posX').value);
+      const posY = parseFloat(document.getElementById('posY').value);
+      const posZ = parseFloat(document.getElementById('posZ').value);
+
+      let params = {};
+      if (type === 'tubular') params = { dOut: p1, thickness: p2, length: p3 };
+      else if (type === 'solid_cylinder') params = { diameter: p1, length: p3 };
+      else if (type === 'plate') params = { width: p1, height: p2, thickness: p3 };
+
+      params.position = { x: posX, y: posY, z: posZ };
+      const id = Date.now().toString();
+      assembly.addComponent(new AssemblyComponent(id, `Pieza_${assembly.components.size + 1}`, type, params));
+      update3D();
+    });
+
+    function anim() {
+      requestAnimationFrame(anim);
+      scene.rotation.y += 0.003;
+      renderer.render(scene, camera);
+    }
+    anim();
   </script>
 </body>
 </html>
