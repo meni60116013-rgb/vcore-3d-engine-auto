@@ -1,23 +1,57 @@
-name: End-to-End Auto Deploy
+name: VCORE 3D Validation and Source Bundle
 
 on:
   push:
-    branches:
-      - main
+    branches: [main, "audit/**"]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: vcore-3d-validation-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test-and-build:
+  validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '24'
-      - name: Pruebas Unitarias
+          node-version: "22"
+
+      - name: Validate JavaScript syntax
+        run: node --check src/geometryEngine.js
+
+      - name: Run engine tests
         run: npm test
-      - name: Empaquetar PWA
+
+      - name: Validate JSON manifests
+        run: |
+          node -e "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8'))"
+          node -e "JSON.parse(require('node:fs').readFileSync('manifest.json', 'utf8'))"
+
+      - name: Package only required source files
+        run: |
+          set -eu
+          mkdir -p dist
+          tar -czf dist/vcore-3d-engine-source.tar.gz index.html manifest.json package.json src test
+          tar -tzf dist/vcore-3d-engine-source.tar.gz >/dev/null
+          sha256sum dist/vcore-3d-engine-source.tar.gz | tee dist/SHA256SUMS
+
+      - name: Upload source bundle
         uses: actions/upload-artifact@v4
         with:
-          name: vcore-pwa-dist
-          path: .
+          name: vcore-3d-engine-source
+          path: |
+            dist/vcore-3d-engine-source.tar.gz
+            dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 7
