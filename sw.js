@@ -1,13 +1,5 @@
 const CACHE_NAME = "vcore-cad-v3";
-const CORE_ASSETS = [
-  "./",
-  "./index.html",
-  "./manifest.json",
-  "./src/geometryEngine.js",
-  "https://unpkg.com/three@0.160.0/build/three.module.js",
-  "https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js",
-  "https://unpkg.com/three@0.160.0/examples/jsm/exporters/STLExporter.js"
-];
+const CORE_ASSETS = ["./", "./index.html", "./manifest.json", "./src/geometryEngine.js"];
 
 self.addEventListener("install", event => {
   event.waitUntil(
