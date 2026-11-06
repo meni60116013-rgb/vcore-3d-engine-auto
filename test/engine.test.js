@@ -60,3 +60,9 @@ test("serializa y restaura un ensamblaje sin perder parámetros", () => {
   assert.deepEqual(restored.toJSON(), original.toJSON());
   assert.throws(() => MachineryAssembly.fromJSON({ schemaVersion: 99, components: [] }), /no compatible/);
 });
+
+test("rechaza materiales sin densidad definida", () => {
+  assert.throws(() => new AssemblyComponent("unknown-material", "Pieza", "solid_cylinder", {
+    diameter: 10, length: 20, material: "unobtainium"
+  }), /Material no soportado/);
+});
