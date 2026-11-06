@@ -17,9 +17,7 @@ test("CAD interface exposes assembly, transforms and export controls", () => {
 });
 
 test("CI source bundle includes the service worker and project documentation", () => {
-  assert.match(workflow, /tar -czf dist\/vcore-3d-engine-source\\.tar\\.gz[^\\n]*sw\\.js/);
-  assert.match(workflow, /README\\.md/);
-  assert.match(workflow, /docs\/TECHNICAL_LIMITS\\.md/);
+  assert.ok(workflow.includes("tar -czf dist/vcore-3d-engine-source.tar.gz index.html manifest.json package.json sw.js src test README.md docs/TECHNICAL_LIMITS.md"));
 });
 
 test("PWA caches only same-origin application files", () => {
