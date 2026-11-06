@@ -15,8 +15,8 @@ test("CAD interface exposes assembly, transforms and export controls", () => {
   assert.match(html, /localStorage/);
 });
 
-test("PWA cache is versioned and includes CAD runtime modules", () => {
+test("PWA caches only same-origin application files", () => {
   assert.match(serviceWorker, /vcore-cad-v3/);
-  assert.match(serviceWorker, /OrbitControls\.js/);
-  assert.match(serviceWorker, /STLExporter\.js/);
+  assert.match(serviceWorker, /geometryEngine\.js/);
+  assert.doesNotMatch(serviceWorker, /unpkg\.com/);
 });
