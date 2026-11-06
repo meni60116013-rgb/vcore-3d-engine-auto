@@ -27,7 +27,8 @@ export class AssemblyComponent {
     this.name = String(name || `Pieza_${this.id}`);
     this.type = type;
     this.params = { ...params };
-    this.material = MATERIALS[params.material || "steel"] ? (params.material || "steel") : "steel";
+    this.material = params.material || "steel";
+    if (!MATERIALS[this.material]) throw new TypeError(`Material no soportado: ${this.material}`);
     this.position = {
       x: finiteCoordinate(params.position?.x, "Posición X"),
       y: finiteCoordinate(params.position?.y, "Posición Y"),
