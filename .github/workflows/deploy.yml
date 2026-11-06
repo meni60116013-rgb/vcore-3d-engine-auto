@@ -2,7 +2,7 @@ name: VCORE 3D Validation and Source Bundle
 
 on:
   push:
-    branches: [main, "audit/**"]
+    branches: [main, "audit/**", "upgrade/**"]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -42,7 +42,7 @@ jobs:
         run: |
           set -eu
           mkdir -p dist
-          tar -czf dist/vcore-3d-engine-source.tar.gz index.html manifest.json package.json src test
+          tar -czf dist/vcore-3d-engine-source.tar.gz index.html manifest.json package.json sw.js src test README.md docs/TECHNICAL_LIMITS.md
           tar -tzf dist/vcore-3d-engine-source.tar.gz >/dev/null
           sha256sum dist/vcore-3d-engine-source.tar.gz | tee dist/SHA256SUMS
 

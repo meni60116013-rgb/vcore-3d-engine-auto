@@ -1,46 +1,134 @@
+const MATERIALS = Object.freeze({
+  steel: { name: "Acero al carbono", density: 7.85e-6 },
+  stainless_304: { name: "Acero inoxidable 304", density: 8.00e-6 },
+  aluminum_6061: { name: "Aluminio 6061", density: 2.70e-6 },
+  titanium: { name: "Titanio", density: 4.51e-6 },
+  brass: { name: "Latón", density: 8.50e-6 },
+  copper: { name: "Cobre", density: 8.96e-6 }
+});
+
+const TYPES = new Set(["tubular", "solid_cylinder", "plate"]);
+const finitePositive = (value, label) => {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) throw new RangeError(`${label} debe ser un número finito mayor que cero.`);
+  return number;
+};
+const finiteCoordinate = (value, label) => {
+  const number = Number(value ?? 0);
+  if (!Number.isFinite(number)) throw new RangeError(`${label} debe ser finita.`);
+  return number;
+};
+
 export class AssemblyComponent {
   constructor(id, name, type, params = {}) {
-    this.id = id;
-    this.name = name;
+    if (id === undefined || id === null || String(id).trim() === "") throw new TypeError("El ID es obligatorio.");
+    if (!TYPES.has(type)) throw new TypeError(`Tipo de componente no soportado: ${type}`);
+    this.id = String(id);
+    this.name = String(name || `Pieza_${this.id}`);
     this.type = type;
-    this.params = params;
-    this.position = params.position || { x: 0, y: 0, z: 0 };
-    this.rotation = params.rotation || { x: 0, y: 0, z: 0 };
+    this.params = { ...params };
+    this.material = params.material || "steel";
+    if (!MATERIALS[this.material]) throw new TypeError(`Material no soportado: ${this.material}`);
+    this.position = {
+      x: finiteCoordinate(params.position?.x, "Posición X"),
+      y: finiteCoordinate(params.position?.y, "Posición Y"),
+      z: finiteCoordinate(params.position?.z, "Posición Z")
+    };
+    this.rotation = {
+      x: finiteCoordinate(params.rotation?.x, "Rotación X"),
+      y: finiteCoordinate(params.rotation?.y, "Rotación Y"),
+      z: finiteCoordinate(params.rotation?.z, "Rotación Z")
+    };
+    this.validate();
+  }
+
+  validate() {
+    const p = this.params;
+    if (this.type === "tubular") {
+      const d = finitePositive(p.dOut, "Diámetro exterior");
+      const t = finitePositive(p.thickness, "Espesor");
+      finitePositive(p.length, "Longitud");
+      if (t * 2 >= d) throw new RangeError("El espesor debe ser menor que la mitad del diámetro exterior.");
+    } else if (this.type === "solid_cylinder") {
+      finitePositive(p.diameter, "Diámetro");
+      finitePositive(p.length, "Longitud");
+    } else if (this.type === "plate") {
+      finitePositive(p.width, "Ancho");
+      finitePositive(p.height, "Alto");
+      finitePositive(p.thickness, "Espesor");
+    }
+    return true;
   }
 
   getMetrics() {
+    this.validate();
+    const p = this.params;
     let volume = 0;
-    if (this.type === 'tubular') {
-      const dOut = parseFloat(this.params.dOut) || 0;
-      const t = parseFloat(this.params.thickness) || 0;
-      const l = parseFloat(this.params.length) || 0;
-      const dIn = Math.max(0, dOut - 2 * t);
-      const area = (Math.PI / 4) * (Math.pow(dOut, 2) - Math.pow(dIn, 2));
-      volume = area * l;
-    } else if (this.type === 'solid_cylinder') {
-      const d = parseFloat(this.params.diameter) || 0;
-      const l = parseFloat(this.params.length) || 0;
-      volume = (Math.PI / 4) * Math.pow(d, 2) * l;
-    } else if (this.type === 'plate') {
-      volume = (parseFloat(this.params.width) || 0) * (parseFloat(this.params.height) || 0) * (parseFloat(this.params.thickness) || 0);
+    if (this.type === "tubular") {
+      const inner = Number(p.dOut) - 2 * Number(p.thickness);
+      volume = Math.PI / 4 * (Number(p.dOut) ** 2 - inner ** 2) * Number(p.length);
+    } else if (this.type === "solid_cylinder") {
+      volume = Math.PI / 4 * Number(p.diameter) ** 2 * Number(p.length);
+    } else {
+      volume = Number(p.width) * Number(p.height) * Number(p.thickness);
     }
-    const mass = volume * 7.85e-6;
-    return { volume, mass };
+    const density = MATERIALS[this.material].density;
+    return { volume, mass: volume * density, density, material: this.material };
+  }
+
+  toJSON() {
+    return {
+      id: this.id, name: this.name, type: this.type, material: this.material,
+      params: { ...this.params, material: this.material, position: { ...this.position }, rotation: { ...this.rotation } }
+    };
   }
 }
 
 export class MachineryAssembly {
-  constructor() {
-    this.components = new Map();
+  constructor() { this.components = new Map(); }
+
+  addComponent(component) {
+    if (!(component instanceof AssemblyComponent)) throw new TypeError("Se requiere una instancia de AssemblyComponent.");
+    if (this.components.has(component.id)) throw new Error(`Ya existe una pieza con ID ${component.id}.`);
+    this.components.set(component.id, component);
+    return component;
   }
-  addComponent(comp) { this.components.set(comp.id, comp); }
+
+  removeComponent(id) { return this.components.delete(String(id)); }
+  clear() { this.components.clear(); }
+
   getTotalMetrics() {
     let mass = 0, volume = 0;
-    this.components.forEach(c => {
-      const m = c.getMetrics();
-      mass += m.mass;
-      volume += m.volume;
-    });
-    return { totalMass: mass.toFixed(3), totalVolume: volume.toFixed(2), count: this.components.size };
+    for (const component of this.components.values()) {
+      const metrics = component.getMetrics();
+      mass += metrics.mass;
+      volume += metrics.volume;
+    }
+    return {
+      count: this.components.size,
+      totalMass: mass,
+      totalVolume: volume,
+      formattedMass: mass.toFixed(3),
+      formattedVolume: volume.toFixed(2)
+    };
+  }
+
+  toJSON() {
+    return { schemaVersion: 1, units: "mm", components: [...this.components.values()].map(c => c.toJSON()) };
+  }
+
+  static fromJSON(data) {
+    if (!data || data.schemaVersion !== 1 || !Array.isArray(data.components)) {
+      throw new TypeError("Archivo de ensamblaje inválido o versión no compatible.");
+    }
+    const assembly = new MachineryAssembly();
+    for (const item of data.components) {
+      assembly.addComponent(new AssemblyComponent(item.id, item.name, item.type, {
+        ...item.params, material: item.material || item.params?.material
+      }));
+    }
+    return assembly;
   }
 }
+
+export { MATERIALS };
