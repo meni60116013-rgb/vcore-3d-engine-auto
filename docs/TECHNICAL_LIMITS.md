@@ -7,10 +7,13 @@
 - Masa y volumen analíticos para las tres geometrías.
 - Densidades nominales seleccionables.
 - Persistencia local, JSON y STL.
-- Validación de entradas y pruebas unitarias.
+- Validación de entradas y versiones de ensamblaje.
+- Pruebas unitarias, pruebas funcionales Chromium y recarga offline posterior a la primera carga online.
+- Paquete de código fuente generado por GitHub Actions.
 
 ## No implementado / no certificado
 
+- Validación física en dispositivos Android reales y pruebas en una gama amplia de navegadores.
 - Restricciones de ensamblaje (coincidente, concéntrica, paralela, distancia, ángulo).
 - Detección de colisiones e interferencias.
 - B-rep, superficies NURBS y operaciones booleanas robustas.
@@ -21,7 +24,7 @@
 
 ## Próximas fases recomendadas
 
-1. Validar exportación STL en navegador real y añadir pruebas de geometría y límites.
+1. Validación manual controlada en Android: instalación PWA, interacción táctil, memoria, rotación de pantalla y exportación/descarga.
 2. Añadir edición de piezas existentes, duplicación, selección en viewport y agrupaciones.
 3. Añadir detección de colisiones AABB como filtro inicial; no presentarla como análisis exacto.
 4. Incorporar biblioteca de perfiles normalizados y materiales con fuente/versión.
