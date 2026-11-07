@@ -30,7 +30,7 @@ test("acepta coordenadas y rotaciones finitas, rechaza valores no finitos", () =
   assert.equal(part.rotation.x, Math.PI / 2);
   assert.throws(() => new AssemblyComponent("nan", "Placa", "plate", {
     width: 1, height: 1, thickness: 1, position: { x: Number.NaN }
-  }), /finita/);
+  }), /número finito/);
 });
 
 test("calcula materiales con densidades diferenciadas", () => {
