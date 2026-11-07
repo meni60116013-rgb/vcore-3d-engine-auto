@@ -7,12 +7,15 @@ const serviceWorker = await readFile(new URL("../sw.js", import.meta.url), "utf8
 const workflow = await readFile(new URL("../.github/workflows/deploy.yml", import.meta.url), "utf8");
 
 test("CAD interface exposes assembly, transforms and export controls", () => {
-  for (const id of ["type", "material", "add", "parts", "save", "load", "json", "stl", "clear", "home", "viewport"]) {
+  for (const id of ["type", "material", "add", "cancel-edit", "parts", "save", "load", "json", "stl", "clear", "home", "viewport"]) {
     assert.match(html, new RegExp(`id="${id}"`), `Falta el control ${id}`);
   }
   assert.match(html, /OrbitControls/);
   assert.match(html, /STLExporter/);
   assert.match(html, /rotation/);
+  assert.match(html, /duplicateComponent/);
+  assert.match(html, /updateComponent/);
+  assert.match(html, /Raycaster/);
   assert.match(html, /localStorage/);
 });
 
