@@ -5,6 +5,7 @@
 - Tres sólidos paramétricos básicos.
 - Transformaciones rígidas por componente (traslación y rotación).
 - Selección desde el árbol y el visor 3D, edición validada y duplicación con desplazamiento automático.
+- Filtro de candidatos de solapamiento mediante AABB con rotaciones; puede producir falsos positivos y no confirma colisiones reales.
 - Masa y volumen analíticos para las tres geometrías.
 - Densidades nominales seleccionables.
 - Persistencia local, JSON y STL.
@@ -26,7 +27,7 @@
 ## Próximas fases recomendadas
 
 1. Validación manual controlada en Android: instalación PWA, interacción táctil, memoria, rotación de pantalla y exportación/descarga.
-2. Añadir detección de colisiones AABB como filtro inicial; no presentarla como análisis exacto.
+2. Reducir falsos positivos del filtro AABB e incorporar pruebas con geometrías y rotaciones adicionales; mantenerlo como filtro preliminar.
 3. Incorporar agrupaciones y restricciones de ensamblaje.
 4. Incorporar biblioteca de perfiles normalizados y materiales con fuente/versión.
 5. Integrar un kernel CAD real antes de prometer STEP o modelado sólido avanzado.
