@@ -9,13 +9,16 @@ const MATERIALS = Object.freeze({
 
 const TYPES = new Set(["tubular", "solid_cylinder", "plate"]);
 const finitePositive = (value, label) => {
-  const number = Number(value);
-  if (!Number.isFinite(number) || number <= 0) throw new RangeError(`${label} debe ser un número finito mayor que cero.`);
-  return number;
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    throw new RangeError(`${label} debe ser un número finito mayor que cero.`);
+  }
+  return value;
 };
 const finiteCoordinate = (value, label) => {
-  const number = Number(value ?? 0);
-  if (!Number.isFinite(number)) throw new RangeError(`${label} debe ser finita.`);
+  const number = value === undefined ? 0 : value;
+  if (typeof number !== "number" || !Number.isFinite(number)) {
+    throw new RangeError(`${label} debe ser un número finito.`);
+  }
   return number;
 };
 
