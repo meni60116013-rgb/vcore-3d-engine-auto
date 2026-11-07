@@ -139,6 +139,14 @@ test("CAD browser flow: geometry, transforms, persistence and exports", { timeou
     assert.deepEqual(stored.components.map(component => component.type), ["tubular", "solid_cylinder", "plate", "tubular"]);
     assert.equal(stored.components[0].params.dOut, 40);
     assert.equal(stored.components[3].params.position.x, stored.components[0].params.position.x + 10);
+
+    // Restoring a saved assembly exits edit mode and clears stale selection.
+    await page.getByRole("button", { name: "Editar Pieza 1" }).click();
+    assert.equal(await page.locator("#add").innerText(), "Guardar cambios");
+    await page.locator("#load").click();
+    assert.equal(await page.locator("#add").innerText(), "Añadir pieza");
+    assert.equal(await page.locator("#count").innerText(), "4");
+
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.locator("#viewport canvas").waitFor({ timeout: 30_000 });
     assert.equal(await page.locator("#count").innerText(), "0");
