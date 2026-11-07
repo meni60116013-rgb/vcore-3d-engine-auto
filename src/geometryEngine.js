@@ -194,6 +194,9 @@ export class MachineryAssembly {
           y: Math.min(boundsA.max.y, boundsB.max.y) - Math.max(boundsA.min.y, boundsB.min.y),
           z: Math.min(boundsA.max.z, boundsB.max.z) - Math.max(boundsA.min.z, boundsB.min.z)
         };
+        if (Object.values(overlap).some(value => !Number.isFinite(value))) {
+          throw new RangeError("El solapamiento AABB excede el rango numérico permitido.");
+        }
         if (overlap.x > 0 && overlap.y > 0 && overlap.z > 0) {
           overlaps.push({
             componentA: components[i].id,
