@@ -50,6 +50,47 @@ test("impide IDs duplicados y permite eliminar componentes", () => {
   assert.equal(assembly.getTotalMetrics().count, 0);
 });
 
+test("actualiza componentes de forma validada sin cambiar su identidad", () => {
+  const assembly = new MachineryAssembly();
+  assembly.addComponent(new AssemblyComponent("edit-me", "Eje original", "solid_cylinder", {
+    diameter: 10, length: 20, position: { x: 1, y: 2, z: 3 }
+  }));
+
+  const replacement = new AssemblyComponent("edit-me", "Eje actualizado", "solid_cylinder", {
+    diameter: 15, length: 30, material: "aluminum_6061",
+    position: { x: 4, y: 5, z: 6 }
+  });
+  assembly.updateComponent("edit-me", replacement);
+  assert.equal(assembly.components.get("edit-me").name, "Eje actualizado");
+  assert.equal(assembly.components.get("edit-me").params.diameter, 15);
+  assert.equal(assembly.getTotalMetrics().count, 1);
+
+  assert.throws(() => assembly.updateComponent("missing", replacement), /No existe/);
+  assert.throws(() => assembly.updateComponent("edit-me", new AssemblyComponent("wrong-id", "Otro", "plate", {
+    width: 10, height: 10, thickness: 2
+  })), /ID de la pieza actualizada/);
+});
+
+test("duplica componentes conservando geometría y material con desplazamiento seguro", () => {
+  const assembly = new MachineryAssembly();
+  assembly.addComponent(new AssemblyComponent("source", "Soporte", "plate", {
+    width: 100, height: 50, thickness: 4, material: "stainless_304",
+    position: { x: 3, y: 4, z: 5 },
+    rotation: { x: 0.1, y: 0.2, z: 0.3 }
+  }));
+
+  const copy = assembly.duplicateComponent("source", "copy", "Soporte duplicado");
+  assert.equal(copy.id, "copy");
+  assert.equal(copy.name, "Soporte duplicado");
+  assert.equal(copy.type, "plate");
+  assert.equal(copy.material, "stainless_304");
+  assert.deepEqual(copy.rotation, { x: 0.1, y: 0.2, z: 0.3 });
+  assert.deepEqual(copy.position, { x: 13, y: 4, z: 5 });
+  assert.equal(assembly.getTotalMetrics().count, 2);
+  assert.throws(() => assembly.duplicateComponent("source", "copy"), /Ya existe/);
+  assert.throws(() => assembly.duplicateComponent("missing", "new-copy"), /No existe/);
+});
+
 test("serializa y restaura un ensamblaje sin perder parámetros", () => {
   const original = new MachineryAssembly();
   original.addComponent(new AssemblyComponent("1", "Tubo", "tubular", {
