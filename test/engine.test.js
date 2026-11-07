@@ -104,3 +104,19 @@ test("mantiene inmutables las densidades de referencia", () => {
   assert.ok(Object.isFrozen(MATERIALS));
   for (const material of Object.values(MATERIALS)) assert.ok(Object.isFrozen(material));
 });
+
+test("rechaza dimensiones y coordenadas no numéricas sin coerción implícita", () => {
+  assert.throws(() => new AssemblyComponent("string-dim", "Pieza", "solid_cylinder", {
+    diameter: "10", length: 20
+  }), /número finito/);
+  assert.throws(() => new AssemblyComponent("bool-dim", "Pieza", "plate", {
+    width: true, height: 10, thickness: 2
+  }), /número finito/);
+  assert.throws(() => new AssemblyComponent("null-coordinate", "Pieza", "plate", {
+    width: 10, height: 10, thickness: 2, position: { x: null }
+  }), /número finito/);
+  const defaults = new AssemblyComponent("defaults", "Pieza", "plate", {
+    width: 10, height: 10, thickness: 2
+  });
+  assert.deepEqual(defaults.position, { x: 0, y: 0, z: 0 });
+});
