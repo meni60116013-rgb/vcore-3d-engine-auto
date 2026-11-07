@@ -1,10 +1,10 @@
 const MATERIALS = Object.freeze({
-  steel: { name: "Acero al carbono", density: 7.85e-6 },
-  stainless_304: { name: "Acero inoxidable 304", density: 8.00e-6 },
-  aluminum_6061: { name: "Aluminio 6061", density: 2.70e-6 },
-  titanium: { name: "Titanio", density: 4.51e-6 },
-  brass: { name: "Latón", density: 8.50e-6 },
-  copper: { name: "Cobre", density: 8.96e-6 }
+  steel: Object.freeze({ name: "Acero al carbono", density: 7.85e-6 }),
+  stainless_304: Object.freeze({ name: "Acero inoxidable 304", density: 8.00e-6 }),
+  aluminum_6061: Object.freeze({ name: "Aluminio 6061", density: 2.70e-6 }),
+  titanium: Object.freeze({ name: "Titanio", density: 4.51e-6 }),
+  brass: Object.freeze({ name: "Latón", density: 8.50e-6 }),
+  copper: Object.freeze({ name: "Cobre", density: 8.96e-6 })
 });
 
 const TYPES = new Set(["tubular", "solid_cylinder", "plate"]);
@@ -73,7 +73,14 @@ export class AssemblyComponent {
       volume = Number(p.width) * Number(p.height) * Number(p.thickness);
     }
     const density = MATERIALS[this.material].density;
-    return { volume, mass: volume * density, density, material: this.material };
+    const mass = volume * density;
+    if (!Number.isFinite(volume) || volume <= 0) {
+      throw new RangeError("El volumen calculado excede el rango numérico permitido.");
+    }
+    if (!Number.isFinite(mass) || mass <= 0) {
+      throw new RangeError("La masa calculada excede el rango numérico permitido.");
+    }
+    return { volume, mass, density, material: this.material };
   }
 
   toJSON() {
@@ -103,6 +110,9 @@ export class MachineryAssembly {
       const metrics = component.getMetrics();
       mass += metrics.mass;
       volume += metrics.volume;
+      if (!Number.isFinite(mass) || !Number.isFinite(volume)) {
+        throw new RangeError("Las métricas totales exceden el rango numérico permitido.");
+      }
     }
     return {
       count: this.components.size,
