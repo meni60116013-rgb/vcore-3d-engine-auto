@@ -21,12 +21,12 @@ test("CI source bundle includes the service worker and project documentation", (
 });
 
 test("PWA caches the app shell and only the pinned Three.js CDN modules", () => {
-  assert.match(serviceWorker, /vcore-cad-v4/);
-  assert.match(serviceWorker, /geometryEngine\\.js/);
-  assert.match(serviceWorker, /https:\\/\\/unpkg\\.com/);
-  assert.match(serviceWorker, /three@0\\.160\\.0/);
-  assert.match(serviceWorker, /response\\.type === "cors"/);
-  assert.match(serviceWorker, /cache\\.match\\(request\\)/);
-  assert.match(serviceWorker, /url\\.origin === TRUSTED_CDN_ORIGIN/);
-  assert.match(serviceWorker, /url\\.pathname\\.startsWith\\(TRUSTED_CDN_PREFIX\\)/);
+  assert.ok(serviceWorker.includes("vcore-cad-v4"));
+  assert.ok(serviceWorker.includes("geometryEngine.js"));
+  assert.ok(serviceWorker.includes("https://unpkg.com"));
+  assert.ok(serviceWorker.includes("/three@0.160.0/"));
+  assert.ok(serviceWorker.includes('response.type === "cors"'));
+  assert.ok(serviceWorker.includes("cache.match(request)"));
+  assert.ok(serviceWorker.includes("url.origin === TRUSTED_CDN_ORIGIN"));
+  assert.ok(serviceWorker.includes("url.pathname.startsWith(TRUSTED_CDN_PREFIX)"));
 });
