@@ -108,10 +108,11 @@ test("CAD browser flow: geometry, transforms, persistence and exports", { timeou
     // Clicking the visible plate in the viewport selects its tree entry.
     const canvas = page.locator("#viewport canvas");
     await canvas.scrollIntoViewIfNeeded();
-    assert.equal(await page.locator('#parts button[aria-pressed="true"]').count(), 0);
+    assert.equal(await page.getByRole("button", { name: "Seleccionar Pieza 3" }).getAttribute("aria-pressed"), "true");
     const canvasBox = await canvas.boundingBox();
     await page.mouse.click(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
     assert.equal(await page.locator('#parts button[aria-pressed="true"]').count(), 1);
+    assert.equal(await page.getByRole("button", { name: "Seleccionar Pieza 3" }).getAttribute("aria-pressed"), "false");
 
     assert.ok(Number(await page.locator("#overlap-count").innerText()) > 0);
     assert.match(await page.locator("#overlaps").innerText(), /Solape AABB/);
