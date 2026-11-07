@@ -7,7 +7,7 @@ const serviceWorker = await readFile(new URL("../sw.js", import.meta.url), "utf8
 const workflow = await readFile(new URL("../.github/workflows/deploy.yml", import.meta.url), "utf8");
 
 test("CAD interface exposes assembly, transforms and export controls", () => {
-  for (const id of ["type", "material", "add", "cancel-edit", "parts", "save", "load", "json", "stl", "clear", "home", "viewport"]) {
+  for (const id of ["type", "material", "add", "cancel-edit", "overlap-count", "overlaps", "parts", "save", "load", "json", "stl", "clear", "home", "viewport"]) {
     assert.match(html, new RegExp(`id="${id}"`), `Falta el control ${id}`);
   }
   assert.match(html, /OrbitControls/);
@@ -16,6 +16,9 @@ test("CAD interface exposes assembly, transforms and export controls", () => {
   assert.match(html, /duplicateComponent/);
   assert.match(html, /updateComponent/);
   assert.match(html, /Raycaster/);
+  assert.match(html, /findAabbOverlaps/);
+  assert.match(html, /getAabb/);
+  assert.match(html, /no es una detección exacta de colisiones/);
   assert.match(html, /localStorage/);
 });
 
