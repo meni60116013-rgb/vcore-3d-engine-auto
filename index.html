@@ -20,7 +20,7 @@ input,select,button{width:100%;border:1px solid var(--line);border-radius:7px;pa
 button{cursor:pointer;font-weight:650}.primary{background:var(--accent);color:#06201e;border:0}.secondary{background:#1b2b38}.danger{color:#ffaaaa;border-color:#744343;background:#291c21}
 .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
 .metric{background:#0b141d;border:1px solid var(--line);border-radius:8px;padding:10px 7px}.metric b{display:block;font-size:16px;color:var(--accent)}.metric small{font-size:10px;color:var(--muted)}
-#parts{display:grid;gap:7px}.part{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px;background:#0b141d;border:1px solid var(--line);border-radius:7px}.part strong{font-size:12px}.part small{display:block;color:var(--muted);font-size:10px}.part button{width:auto;padding:5px 8px;color:#ffaaaa}
+#parts{display:grid;gap:7px}.part{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:7px;background:#0b141d;border:1px solid var(--line);border-radius:7px}.part.selected{border-color:var(--accent);background:#10252a}.part strong{font-size:12px}.part small{display:block;color:var(--muted);font-size:10px}.part button{width:auto;padding:5px 7px}.part .part-select{flex:1;min-width:0;text-align:left;background:transparent;border-color:transparent}.part .part-actions{display:flex;gap:4px;flex-shrink:0}.part .part-actions button{padding:5px 6px;font-size:10px}.part .remove{color:#ffaaaa}
 #workspace{min-width:0;display:flex;flex-direction:column;min-height:550px}#toolbar{padding:10px 14px;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:center;flex-wrap:wrap}#toolbar button{width:auto;padding:8px 12px;font-size:12px}#viewport{flex:1;min-height:480px;position:relative}#viewport canvas{display:block;width:100%;height:100%}
 #status{font-size:11px;color:var(--muted);margin-left:auto}#error{color:#ff9b9b;font-size:12px;min-height:18px}
 @media(max-width:800px){main{grid-template-columns:1fr}aside{max-height:none;border-right:0;border-bottom:1px solid var(--line)}#workspace{min-height:55vh}#viewport{min-height:55vh}}
@@ -39,7 +39,7 @@ button{cursor:pointer;font-weight:650}.primary{background:var(--accent);color:#0
 <label for="material">Material</label><select id="material"><option value="steel">Acero al carbono</option><option value="stainless_304">Acero inoxidable 304</option><option value="aluminum_6061">Aluminio 6061</option><option value="titanium">Titanio</option><option value="brass">Latón</option><option value="copper">Cobre</option></select>
 <label>Posición (mm)</label><div class="grid3"><input id="x" type="number" step="any" value="0" aria-label="Posición X"><input id="y" type="number" step="any" value="0" aria-label="Posición Y"><input id="z" type="number" step="any" value="0" aria-label="Posición Z"></div>
 <label>Rotación (grados)</label><div class="grid3"><input id="rx" type="number" step="any" value="0" aria-label="Rotación X"><input id="ry" type="number" step="any" value="0" aria-label="Rotación Y"><input id="rz" type="number" step="any" value="0" aria-label="Rotación Z"></div>
-<button id="add" class="primary" style="margin-top:12px">Añadir pieza</button><div id="error" role="status"></div>
+<div class="grid2" style="margin-top:12px"><button id="add" class="primary">Añadir pieza</button><button id="cancel-edit" class="secondary" type="button" hidden>Cancelar edición</button></div><div id="error" role="status"></div>
 </section>
 <section><h2>Resumen del ensamblaje</h2><div class="metrics"><div class="metric"><b id="count">0</b><small>PIEZAS</small></div><div class="metric"><b id="mass">0</b><small>MASA kg</small></div><div class="metric"><b id="volume">0</b><small>VOLUMEN mm³</small></div></div></section>
 <section><h2>Árbol de piezas</h2><div id="parts"><div class="part"><small>Sin componentes todavía</small></div></div></section>
@@ -55,6 +55,8 @@ import { AssemblyComponent, MachineryAssembly } from "./src/geometryEngine.js";
 
 const $ = id => document.getElementById(id);
 let assembly = new MachineryAssembly();
+let selectedComponentId = null;
+let editingComponentId = null;
 const scene = new THREE.Scene(); scene.background = new THREE.Color(0x0b1118);
 const camera = new THREE.PerspectiveCamera(45,1,.1,100000); camera.position.set(650,520,720);
 const renderer = new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
@@ -82,7 +84,7 @@ function geometryFor(c){
 function renderAssembly(){
  for(const mesh of meshes.values()){modelGroup.remove(mesh);mesh.geometry.dispose();mesh.material.dispose()}meshes.clear();
  for(const c of assembly.components.values()){
-  const mesh=new THREE.Mesh(geometryFor(c),new THREE.MeshStandardMaterial({color:0x9aaab5,metalness:.68,roughness:.3}));
+  const mesh=new THREE.Mesh(geometryFor(c),new THREE.MeshStandardMaterial({color:c.id===selectedComponentId?0x20c7b5:0x9aaab5,metalness:.68,roughness:.3}));
   mesh.position.set(c.position.x,c.position.y,c.position.z);mesh.rotation.set(c.rotation.x,c.rotation.y,c.rotation.z);
   mesh.userData.componentId=c.id;modelGroup.add(mesh);meshes.set(c.id,mesh);
  }
@@ -93,12 +95,36 @@ function updateSummary(){
  const parts=$("parts");parts.replaceChildren();
  if(!m.count){const empty=document.createElement("div");empty.className="part";empty.textContent="Sin componentes todavía";parts.append(empty);return}
  for(const c of assembly.components.values()){
-  const row=document.createElement("div");row.className="part";
-  const info=document.createElement("div");const title=document.createElement("strong");title.textContent=c.name;
-  const detail=document.createElement("small");detail.textContent=c.type+" · "+c.material;info.append(title,detail);
-  const del=document.createElement("button");del.className="danger";del.textContent="Quitar";del.setAttribute("aria-label","Quitar "+c.name);
-  del.addEventListener("click",()=>{assembly.removeComponent(c.id);renderAssembly()});row.append(info,del);parts.append(row);
+  const row=document.createElement("div");row.className="part"+(c.id===selectedComponentId?" selected":"");
+  const select=document.createElement("button");select.type="button";select.className="part-select";select.setAttribute("aria-pressed",String(c.id===selectedComponentId));select.setAttribute("aria-label","Seleccionar "+c.name);
+  const title=document.createElement("strong");title.textContent=c.name;
+  const detail=document.createElement("small");detail.textContent=c.type+" · "+c.material;select.append(title,detail);
+  select.addEventListener("click",()=>selectComponent(c.id));
+  const actions=document.createElement("div");actions.className="part-actions";
+  const edit=document.createElement("button");edit.type="button";edit.className="secondary";edit.textContent="Editar";edit.setAttribute("aria-label","Editar "+c.name);edit.addEventListener("click",()=>loadForEdit(c));
+  const duplicate=document.createElement("button");duplicate.type="button";duplicate.className="secondary";duplicate.textContent="Copiar";duplicate.setAttribute("aria-label","Duplicar "+c.name);duplicate.addEventListener("click",()=>duplicatePart(c));
+  const del=document.createElement("button");del.type="button";del.className="danger remove";del.textContent="Quitar";del.setAttribute("aria-label","Quitar "+c.name);
+  del.addEventListener("click",()=>{assembly.removeComponent(c.id);if(selectedComponentId===c.id)selectedComponentId=null;if(editingComponentId===c.id)cancelEdit();renderAssembly()});
+  actions.append(edit,duplicate,del);row.append(select,actions);parts.append(row);
  }
+}
+function newComponentId(){return globalThis.crypto?.randomUUID?.()||String(Date.now())+Math.random().toString(16).slice(2)}
+function selectComponent(id){if(!assembly.components.has(id))return;selectedComponentId=id;renderAssembly()}
+function loadForEdit(c){
+ editingComponentId=c.id;selectedComponentId=c.id;const p=c.params;
+ $("type").value=c.type;updateLabels();
+ if(c.type==="tubular"){$("p1").value=p.dOut;$("p2").value=p.thickness;$("p3").value=p.length}
+ else if(c.type==="solid_cylinder"){$("p1").value=p.diameter;$("p3").value=p.length}
+ else{$("p1").value=p.width;$("p2").value=p.height;$("p3").value=p.thickness}
+ $("material").value=c.material;
+ $("x").value=c.position.x;$("y").value=c.position.y;$("z").value=c.position.z;
+ $("rx").value=c.rotation.x*180/Math.PI;$("ry").value=c.rotation.y*180/Math.PI;$("rz").value=c.rotation.z*180/Math.PI;
+ $("add").textContent="Guardar cambios";$("cancel-edit").hidden=false;$("error").textContent="";$("status").textContent="Editando "+c.name;renderAssembly();
+}
+function cancelEdit(){editingComponentId=null;$("add").textContent="Añadir pieza";$("cancel-edit").hidden=true;$("status").textContent="Edición cancelada"}
+function duplicatePart(c){
+ try{const copy=assembly.duplicateComponent(c.id,newComponentId(),"Pieza "+(assembly.components.size+1));selectedComponentId=copy.id;if(editingComponentId)cancelEdit();$("error").textContent="";renderAssembly()}
+ catch(error){$("error").textContent=error.message}
 }
 function updateLabels(){
  const type=$("type").value;
@@ -111,17 +137,27 @@ $("add").addEventListener("click",()=>{
   const type=$("type").value,p1=Number($("p1").value),p2=Number($("p2").value),p3=Number($("p3").value);
   const params=type==="tubular"?{dOut:p1,thickness:p2,length:p3}:type==="solid_cylinder"?{diameter:p1,length:p3}:{width:p1,height:p2,thickness:p3};
   Object.assign(params,{material:$("material").value,position:{x:Number($("x").value),y:Number($("y").value),z:Number($("z").value)},rotation:{x:Number($("rx").value)*Math.PI/180,y:Number($("ry").value)*Math.PI/180,z:Number($("rz").value)*Math.PI/180}});
-  const id=globalThis.crypto?.randomUUID?.()||String(Date.now())+Math.random().toString(16).slice(2);
-  assembly.addComponent(new AssemblyComponent(id,"Pieza "+(assembly.components.size+1),type,params));$("error").textContent="";renderAssembly();
+  const id=editingComponentId||newComponentId();
+  const existing=editingComponentId?assembly.components.get(id):null;
+  const component=new AssemblyComponent(id,existing?.name||"Pieza "+(assembly.components.size+1),type,params);
+  if(editingComponentId)assembly.updateComponent(id,component);else assembly.addComponent(component);
+  editingComponentId=null;selectedComponentId=id;$("add").textContent="Añadir pieza";$("cancel-edit").hidden=true;$("error").textContent="";$("status").textContent="Motor listo";renderAssembly();
  }catch(error){$("error").textContent=error.message}
 });
+$("cancel-edit").addEventListener("click",cancelEdit);
 function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 $("save").addEventListener("click",()=>{try{localStorage.setItem("vcore3d-assembly-v1",JSON.stringify(assembly.toJSON()));$("status").textContent="Ensamblaje guardado en este dispositivo"}catch(e){$("error").textContent="No se pudo guardar: "+e.message}});
 $("load").addEventListener("click",()=>{try{const raw=localStorage.getItem("vcore3d-assembly-v1");if(!raw)throw new Error("No hay un ensamblaje guardado.");assembly=MachineryAssembly.fromJSON(JSON.parse(raw));renderAssembly();$("status").textContent="Ensamblaje recuperado"}catch(e){$("error").textContent=e.message}});
 $("json").addEventListener("click",()=>download(new Blob([JSON.stringify(assembly.toJSON(),null,2)],{type:"application/json"}),"vcore-3d-assembly.json"));
 $("stl").addEventListener("click",()=>{if(!assembly.components.size){$("error").textContent="Añade piezas antes de exportar.";return}const exporter=new STLExporter();download(new Blob([exporter.parse(modelGroup)],{type:"model/stl"}),"vcore-3d-assembly.stl")});
-$("clear").addEventListener("click",()=>{if(!assembly.components.size)return;if(confirm("¿Vaciar todo el ensamblaje actual?")){assembly.clear();renderAssembly()}});
+$("clear").addEventListener("click",()=>{if(!assembly.components.size)return;if(confirm("¿Vaciar todo el ensamblaje actual?")){assembly.clear();selectedComponentId=null;if(editingComponentId)cancelEdit();renderAssembly()}});
 $("home").addEventListener("click",()=>{camera.position.set(650,520,720);controls.target.set(0,0,0);controls.update()});
+const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
+renderer.domElement.addEventListener("click",event=>{
+ const rect=renderer.domElement.getBoundingClientRect();pointer.x=((event.clientX-rect.left)/rect.width)*2-1;pointer.y=-((event.clientY-rect.top)/rect.height)*2+1;
+ raycaster.setFromCamera(pointer,camera);const hit=raycaster.intersectObjects(modelGroup.children,false)[0];
+ if(hit?.object.userData.componentId)selectComponent(hit.object.userData.componentId);
+});
 function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera)}animate();
 if("serviceWorker" in navigator)navigator.serviceWorker.register("./sw.js").catch(()=>{$("status").textContent="Modo web · Service Worker no disponible"});
 </script>
