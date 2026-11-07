@@ -86,6 +86,40 @@ export class AssemblyComponent {
     return { volume, mass, density, material: this.material };
   }
 
+  getAabb() {
+    this.validate();
+    const p = this.params;
+    let half;
+    if (this.type === "tubular") {
+      half = [Number(p.dOut) / 2, Number(p.dOut) / 2, Number(p.length) / 2];
+    } else if (this.type === "solid_cylinder") {
+      half = [Number(p.diameter) / 2, Number(p.diameter) / 2, Number(p.length) / 2];
+    } else {
+      half = [Number(p.width) / 2, Number(p.height) / 2, Number(p.thickness) / 2];
+    }
+
+    const { x, y, z } = this.rotation;
+    const a = Math.cos(x), b = Math.sin(x);
+    const d = Math.cos(y), e = Math.sin(y);
+    const f = Math.cos(z), g = Math.sin(z);
+    const rotation = [
+      [d * f, -d * g, e],
+      [a * g + b * e * f, a * f - b * e * g, -b * d],
+      [b * g - a * e * f, b * f + a * e * g, a * d]
+    ];
+    const extent = rotation.map(row =>
+      Math.abs(row[0]) * half[0] + Math.abs(row[1]) * half[1] + Math.abs(row[2]) * half[2]
+    );
+    const center = [this.position.x, this.position.y, this.position.z];
+    if (extent.some(value => !Number.isFinite(value))) {
+      throw new RangeError("Los límites geométricos exceden el rango numérico permitido.");
+    }
+    return {
+      min: { x: center[0] - extent[0], y: center[1] - extent[1], z: center[2] - extent[2] },
+      max: { x: center[0] + extent[0], y: center[1] + extent[1], z: center[2] + extent[2] }
+    };
+  }
+
   toJSON() {
     return {
       id: this.id, name: this.name, type: this.type, material: this.material,
@@ -145,6 +179,33 @@ export class MachineryAssembly {
 
   removeComponent(id) { return this.components.delete(String(id)); }
   clear() { this.components.clear(); }
+
+  findAabbOverlaps() {
+    const components = [...this.components.values()];
+    const overlaps = [];
+    for (let i = 0; i < components.length; i += 1) {
+      const boundsA = components[i].getAabb();
+      for (let j = i + 1; j < components.length; j += 1) {
+        const boundsB = components[j].getAabb();
+        const overlap = {
+          x: Math.min(boundsA.max.x, boundsB.max.x) - Math.max(boundsA.min.x, boundsB.min.x),
+          y: Math.min(boundsA.max.y, boundsB.max.y) - Math.max(boundsA.min.y, boundsB.min.y),
+          z: Math.min(boundsA.max.z, boundsB.max.z) - Math.max(boundsA.min.z, boundsB.min.z)
+        };
+        if (overlap.x > 0 && overlap.y > 0 && overlap.z > 0) {
+          overlaps.push({
+            componentA: components[i].id,
+            nameA: components[i].name,
+            componentB: components[j].id,
+            nameB: components[j].name,
+            overlap,
+            approximate: true
+          });
+        }
+      }
+    }
+    return overlaps;
+  }
 
   getTotalMetrics() {
     let mass = 0, volume = 0;
