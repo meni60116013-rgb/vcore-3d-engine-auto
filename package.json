@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test test/*.test.js",
+    "test:browser": "node --test test/browser.test.js",
     "check": "node --check src/geometryEngine.js"
   }
 }
