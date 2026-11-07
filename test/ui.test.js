@@ -5,6 +5,7 @@ import test from "node:test";
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const serviceWorker = await readFile(new URL("../sw.js", import.meta.url), "utf8");
 const workflow = await readFile(new URL("../.github/workflows/deploy.yml", import.meta.url), "utf8");
+const geometryEngine = await readFile(new URL("../src/geometryEngine.js", import.meta.url), "utf8");
 
 test("CAD interface exposes assembly, transforms and export controls", () => {
   for (const id of ["type", "material", "add", "cancel-edit", "overlap-count", "overlaps", "parts", "save", "load", "json", "stl", "clear", "home", "viewport"]) {
@@ -17,7 +18,7 @@ test("CAD interface exposes assembly, transforms and export controls", () => {
   assert.match(html, /updateComponent/);
   assert.match(html, /Raycaster/);
   assert.match(html, /findAabbOverlaps/);
-  assert.match(html, /getAabb/);
+  assert.match(geometryEngine, /getAabb/);
   assert.match(html, /no es una detección exacta de colisiones/);
   assert.match(html, /localStorage/);
 });
