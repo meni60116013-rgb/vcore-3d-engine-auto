@@ -104,6 +104,45 @@ export class MachineryAssembly {
     return component;
   }
 
+  updateComponent(id, replacement) {
+    const key = String(id);
+    if (!this.components.has(key)) throw new Error(`No existe una pieza con ID ${key}.`);
+    if (!(replacement instanceof AssemblyComponent)) {
+      throw new TypeError("Se requiere una instancia de AssemblyComponent.");
+    }
+    if (replacement.id !== key) {
+      throw new Error("El ID de la pieza actualizada debe coincidir con el ID original.");
+    }
+    replacement.validate();
+    this.components.set(key, replacement);
+    return replacement;
+  }
+
+  duplicateComponent(id, newId, newName) {
+    const original = this.components.get(String(id));
+    if (!original) throw new Error(`No existe una pieza con ID ${id}.`);
+    if (newId === undefined || newId === null || String(newId).trim() === "") {
+      throw new TypeError("El nuevo ID es obligatorio.");
+    }
+    const params = {
+      ...original.params,
+      material: original.material,
+      position: {
+        x: original.position.x + 10,
+        y: original.position.y,
+        z: original.position.z
+      },
+      rotation: { ...original.rotation }
+    };
+    const duplicate = new AssemblyComponent(
+      String(newId),
+      newName || `${original.name} (copia)`,
+      original.type,
+      params
+    );
+    return this.addComponent(duplicate);
+  }
+
   removeComponent(id) { return this.components.delete(String(id)); }
   clear() { this.components.clear(); }
 
