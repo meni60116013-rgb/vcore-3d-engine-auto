@@ -8,6 +8,7 @@ Aplicación web progresiva para crear ensamblajes paramétricos sencillos en mil
 - Posición XYZ y rotación XYZ por componente.
 - Materiales con densidades de referencia: acero al carbono, inoxidable 304, aluminio 6061, titanio, latón y cobre.
 - Cálculo geométrico de volumen y masa estimada.
+- Revisión de solapamientos mediante AABB rotadas; es un filtro aproximado, no una detección exacta de colisiones.
 - Árbol de piezas con selección, edición de parámetros, duplicación con separación automática, eliminación individual y vaciado del ensamblaje.
 - Selección visual de componentes desde el árbol o directamente en el visor 3D.
 - Guardado local en el navegador, recuperación del último guardado y exportación JSON.
@@ -15,7 +16,7 @@ Aplicación web progresiva para crear ensamblajes paramétricos sencillos en mil
 - Controles de cámara orbital, zoom y adaptación a pantalla.
 - Validación de dimensiones, coordenadas, identificadores y versiones de archivo.
 - Service worker con caché del shell de la aplicación y de módulos Three.js fijados a versión.
-- Pruebas unitarias y de contrato, pruebas funcionales Chromium de selección/edición/duplicación, exportaciones y persistencia, y prueba de recarga offline en GitHub Actions.
+- Pruebas unitarias y de contrato, pruebas funcionales Chromium de selección/edición/duplicación, exportaciones, persistencia, revisión AABB y recarga offline en GitHub Actions.
 
 ## Uso
 
