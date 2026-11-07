@@ -66,3 +66,41 @@ test("rechaza materiales sin densidad definida", () => {
     diameter: 10, length: 20, material: "unobtainium"
   }), /Material no soportado/);
 });
+
+
+test("verifica fórmulas analíticas exactas para tubo, cilindro y placa", () => {
+  const tube = new AssemblyComponent("tube-exact", "Tubo", "tubular", {
+    dOut: 20, thickness: 2, length: 100
+  }).getMetrics();
+  const cylinder = new AssemblyComponent("cylinder-exact", "Eje", "solid_cylinder", {
+    diameter: 10, length: 100
+  }).getMetrics();
+  const plate = new AssemblyComponent("plate-exact", "Placa", "plate", {
+    width: 10, height: 20, thickness: 2
+  }).getMetrics();
+
+  assert.ok(Math.abs(tube.volume - 3600 * Math.PI) < 1e-9);
+  assert.ok(Math.abs(cylinder.volume - 2500 * Math.PI) < 1e-9);
+  assert.equal(plate.volume, 400);
+  assert.equal(tube.mass, tube.volume * MATERIALS.steel.density);
+  assert.equal(cylinder.mass, cylinder.volume * MATERIALS.steel.density);
+  assert.equal(plate.mass, plate.volume * MATERIALS.steel.density);
+});
+
+test("rechaza resultados geométricos y métricas acumuladas fuera del rango numérico", () => {
+  const oversized = new AssemblyComponent("oversized", "Eje extremo", "solid_cylinder", {
+    diameter: 1e155, length: 1e155
+  });
+  assert.throws(() => oversized.getMetrics(), /rango numérico/);
+
+  const assembly = new MachineryAssembly();
+  const params = { width: 1e103, height: 1e103, thickness: 1e102 };
+  assembly.addComponent(new AssemblyComponent("large-a", "Placa A", "plate", params));
+  assembly.addComponent(new AssemblyComponent("large-b", "Placa B", "plate", params));
+  assert.throws(() => assembly.getTotalMetrics(), /rango numérico/);
+});
+
+test("mantiene inmutables las densidades de referencia", () => {
+  assert.ok(Object.isFrozen(MATERIALS));
+  for (const material of Object.values(MATERIALS)) assert.ok(Object.isFrozen(material));
+});
