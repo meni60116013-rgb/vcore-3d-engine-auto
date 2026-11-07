@@ -91,6 +91,55 @@ test("duplica componentes conservando geometría y material con desplazamiento s
   assert.throws(() => assembly.duplicateComponent("missing", "new-copy"), /No existe/);
 });
 
+test("calcula AABB rotadas para piezas y aplica la transformación XYZ", () => {
+  const plate = new AssemblyComponent("rotated", "Placa girada", "plate", {
+    width: 10, height: 2, thickness: 2,
+    rotation: { x: 0, y: 0, z: Math.PI / 2 }
+  });
+  const bounds = plate.getAabb();
+  assert.ok(Math.abs(bounds.min.x + 1) < 1e-10);
+  assert.ok(Math.abs(bounds.max.x - 1) < 1e-10);
+  assert.ok(Math.abs(bounds.min.y + 5) < 1e-10);
+  assert.ok(Math.abs(bounds.max.y - 5) < 1e-10);
+  assert.equal(bounds.min.z, -1);
+  assert.equal(bounds.max.z, 1);
+});
+
+test("detecta candidatos de solapamiento AABB y excluye piezas que solo se tocan", () => {
+  const assembly = new MachineryAssembly();
+  assembly.addComponent(new AssemblyComponent("a", "Placa A", "plate", {
+    width: 10, height: 10, thickness: 2
+  }));
+  assembly.addComponent(new AssemblyComponent("b", "Placa B", "plate", {
+    width: 4, height: 4, thickness: 2, position: { x: 3, y: 0, z: 0 }
+  }));
+  const candidates = assembly.findAabbOverlaps();
+  assert.equal(candidates.length, 1);
+  assert.equal(candidates[0].componentA, "a");
+  assert.equal(candidates[0].componentB, "b");
+  assert.deepEqual(candidates[0].overlap, { x: 4, y: 4, z: 2 });
+  assert.equal(candidates[0].approximate, true);
+
+  assembly.removeComponent("b");
+  assembly.addComponent(new AssemblyComponent("touching", "Placa contigua", "plate", {
+    width: 4, height: 4, thickness: 2, position: { x: 7, y: 0, z: 0 }
+  }));
+  assert.equal(assembly.findAabbOverlaps().length, 0);
+});
+
+test("marca explícitamente como aproximado el solapamiento de una pieza dentro de un tubo hueco", () => {
+  const assembly = new MachineryAssembly();
+  assembly.addComponent(new AssemblyComponent("tube-shell", "Tubo hueco", "tubular", {
+    dOut: 20, thickness: 2, length: 100
+  }));
+  assembly.addComponent(new AssemblyComponent("inner-shaft", "Eje interior", "solid_cylinder", {
+    diameter: 4, length: 10
+  }));
+  const candidates = assembly.findAabbOverlaps();
+  assert.equal(candidates.length, 1);
+  assert.equal(candidates[0].approximate, true);
+});
+
 test("serializa y restaura un ensamblaje sin perder parámetros", () => {
   const original = new MachineryAssembly();
   original.addComponent(new AssemblyComponent("1", "Tubo", "tubular", {
