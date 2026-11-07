@@ -135,6 +135,16 @@ test("CAD browser flow: geometry, transforms, persistence and exports", { timeou
     assert.equal(await page.locator("#count").innerText(), "0");
     assert.equal(await page.locator("#parts").innerText(), "Sin componentes todavía");
 
+    // A corrupted or unsupported saved document must not mutate the current assembly.
+    await page.evaluate(() => localStorage.setItem("vcore3d-assembly-v1", JSON.stringify({
+      schemaVersion: 99,
+      units: "mm",
+      components: []
+    })));
+    await page.locator("#load").click();
+    assert.match(await page.locator("#error").innerText(), /Archivo de ensamblaje inválido/i);
+    assert.equal(await page.locator("#count").innerText(), "0");
+
     assert.deepEqual(pageErrors, [], `Browser runtime errors: ${pageErrors.join("; ")}`);
   } finally {
     if (browser) await browser.close();
