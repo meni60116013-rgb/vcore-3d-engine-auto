@@ -111,12 +111,14 @@ export class AssemblyComponent {
       Math.abs(row[0]) * half[0] + Math.abs(row[1]) * half[1] + Math.abs(row[2]) * half[2]
     );
     const center = [this.position.x, this.position.y, this.position.z];
-    if (extent.some(value => !Number.isFinite(value))) {
+    const min = center.map((value, index) => value - extent[index]);
+    const max = center.map((value, index) => value + extent[index]);
+    if ([...extent, ...min, ...max].some(value => !Number.isFinite(value))) {
       throw new RangeError("Los límites geométricos exceden el rango numérico permitido.");
     }
     return {
-      min: { x: center[0] - extent[0], y: center[1] - extent[1], z: center[2] - extent[2] },
-      max: { x: center[0] + extent[0], y: center[1] + extent[1], z: center[2] + extent[2] }
+      min: { x: min[0], y: min[1], z: min[2] },
+      max: { x: max[0], y: max[1], z: max[2] }
     };
   }
 
