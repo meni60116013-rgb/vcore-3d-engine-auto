@@ -8,12 +8,13 @@ Aplicación web progresiva para crear ensamblajes paramétricos sencillos en mil
 - Posición XYZ y rotación XYZ por componente.
 - Materiales con densidades de referencia: acero al carbono, inoxidable 304, aluminio 6061, titanio, latón y cobre.
 - Cálculo geométrico de volumen y masa estimada.
-- Árbol de piezas con eliminación individual.
-- Guardado local en el navegador, importación desde el último guardado y exportación JSON.
+- Árbol de piezas con eliminación individual y vaciado del ensamblaje.
+- Guardado local en el navegador, recuperación del último guardado y exportación JSON.
 - Exportación de ensamblaje a STL mediante Three.js.
 - Controles de cámara orbital, zoom y adaptación a pantalla.
-- Validación de dimensiones, coordenadas e identificadores.
-- Pruebas automatizadas en Node.js y empaquetado de código fuente en GitHub Actions.
+- Validación de dimensiones, coordenadas, identificadores y versiones de archivo.
+- Service worker con caché del shell de la aplicación y de módulos Three.js fijados a versión.
+- Pruebas unitarias y de contrato, pruebas funcionales Chromium y prueba de recarga offline en GitHub Actions.
 
 ## Uso
 
@@ -27,11 +28,14 @@ Las dimensiones se expresan en mm. El volumen se expresa en mm³. La masa se cal
 
 Este proyecto todavía no es un CAD/CAE industrial ni sustituye software de ingeniería certificado. No implementa restricciones paramétricas entre piezas, detección de interferencias, mallado, FEA, análisis de fatiga, simulación térmica, planos técnicos, STEP/IGES ni generación de G-code. STL es una malla de triángulos y no conserva historial paramétrico.
 
-La interfaz importa Three.js y sus módulos desde un CDN. El service worker almacena la aplicación local; la visualización y exportación 3D requieren que las dependencias externas estén disponibles al menos durante la primera carga. No se debe interpretar esto como funcionamiento completamente desconectado.
+La interfaz importa Three.js y sus módulos desde un CDN. El service worker almacena la aplicación y los módulos externos después de una carga online satisfactoria. La prueba automatizada en Chromium verifica una recarga offline posterior. La primera instalación y primera carga siguen requiriendo conexión; esto no equivale a una instalación completamente autónoma sin red.
 
 ## Validación
 
-`npm test` ejecuta las pruebas del motor geométrico y los contratos básicos de interfaz. GitHub Actions valida sintaxis, pruebas, manifiestos y empaqueta únicamente los archivos de código necesarios.
+- `npm test`: pruebas del motor geométrico y contratos básicos de interfaz.
+- `npm run test:browser`: pruebas Chromium de geometrías, transformaciones, métricas, exportación JSON/STL, persistencia, rechazo de archivos incompatibles y recarga offline.
+- GitHub Actions ejecuta ambas baterías, valida manifiestos y empaqueta el código fuente.
+- Las pruebas Chromium en CI no sustituyen una validación física en teléfonos Android reales.
 
 ## Seguridad y alcance
 
