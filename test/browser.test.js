@@ -104,6 +104,8 @@ test("CAD browser flow: geometry, transforms, persistence and exports", { timeou
     await page.locator("#p3").fill("5");
     await page.locator("#add").click();
     assert.equal(await page.locator("#count").innerText(), "3");
+    assert.ok(Number(await page.locator("#overlap-count").innerText()) > 0);
+    assert.match(await page.locator("#overlaps").innerText(), /Solape AABB/);
 
     // Select and edit an existing component without changing the assembly count.
     await page.getByRole("button", { name: "Seleccionar Pieza 2" }).click();
