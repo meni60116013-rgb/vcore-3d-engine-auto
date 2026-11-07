@@ -17,7 +17,7 @@ const finitePositive = (value, label) => {
 const finiteCoordinate = (value, label) => {
   const number = value === undefined ? 0 : value;
   if (typeof number !== "number" || !Number.isFinite(number)) {
-    throw new RangeError(`${label} debe ser un número finito.`);
+    throw new RangeError(`${label} debe ser finita y un número finito.`);
   }
   return number;
 };
