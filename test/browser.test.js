@@ -105,7 +105,23 @@ test("CAD browser flow: geometry, transforms, persistence and exports", { timeou
     await page.locator("#add").click();
     assert.equal(await page.locator("#count").innerText(), "3");
 
-    // STL export must contain the three generated solids.
+    // Select and edit an existing component without changing the assembly count.
+    await page.getByRole("button", { name: "Seleccionar Pieza 2" }).click();
+    assert.equal(await page.getByRole("button", { name: "Seleccionar Pieza 2" }).getAttribute("aria-pressed"), "true");
+    await page.getByRole("button", { name: "Editar Pieza 1" }).click();
+    assert.equal(await page.locator("#add").innerText(), "Guardar cambios");
+    await page.locator("#p1").fill("40");
+    await page.locator("#p2").fill("2.5");
+    await page.locator("#add").click();
+    assert.equal(await page.locator("#count").innerText(), "3");
+    assert.equal(await page.locator("#add").innerText(), "Añadir pieza");
+
+    // Duplicate a selected component with a distinct ID and offset.
+    await page.getByRole("button", { name: "Duplicar Pieza 1" }).click();
+    assert.equal(await page.locator("#count").innerText(), "4");
+    assert.equal(await page.getByRole("button", { name: "Seleccionar Pieza 4" }).count(), 1);
+
+    // STL export must contain the four generated solids.
     const stlDownloadPromise = page.waitForEvent("download");
     await page.locator("#stl").click();
     const stlDownload = await stlDownloadPromise;
@@ -114,22 +130,24 @@ test("CAD browser flow: geometry, transforms, persistence and exports", { timeou
     const stlChunks = [];
     for await (const chunk of stlStream) stlChunks.push(chunk);
     const stl = Buffer.concat(stlChunks).toString("utf8");
-    assert.ok(stl.length > 300, "STL export should contain triangle data for all solids");
+    assert.ok(stl.length > 400, "STL export should contain triangle data for all solids");
     assert.match(stl.slice(0, 32), /solid/i);
 
     // Local persistence must survive a reload and restore all components.
     await page.locator("#save").click();
     const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("vcore3d-assembly-v1")));
-    assert.deepEqual(stored.components.map(component => component.type), ["tubular", "solid_cylinder", "plate"]);
+    assert.deepEqual(stored.components.map(component => component.type), ["tubular", "solid_cylinder", "plate", "tubular"]);
+    assert.equal(stored.components[0].params.dOut, 40);
+    assert.equal(stored.components[3].params.position.x, stored.components[0].params.position.x + 10);
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.locator("#viewport canvas").waitFor({ timeout: 30_000 });
     assert.equal(await page.locator("#count").innerText(), "0");
     await page.locator("#load").click();
-    assert.equal(await page.locator("#count").innerText(), "3");
+    assert.equal(await page.locator("#count").innerText(), "4");
 
     // Remove a component and clear the remainder through the confirmation dialog.
     await page.getByRole("button", { name: "Quitar Pieza 1" }).click();
-    assert.equal(await page.locator("#count").innerText(), "2");
+    assert.equal(await page.locator("#count").innerText(), "3");
     page.once("dialog", dialog => dialog.accept());
     await page.locator("#clear").click();
     assert.equal(await page.locator("#count").innerText(), "0");
