@@ -160,11 +160,14 @@ export class MachineryAssembly {
     if (newId === undefined || newId === null || String(newId).trim() === "") {
       throw new TypeError("El nuevo ID es obligatorio.");
     }
+    const bounds = original.getAabb();
+    const clearance = 10;
+    const xOffset = bounds.max.x - bounds.min.x + clearance;
     const params = {
       ...original.params,
       material: original.material,
       position: {
-        x: original.position.x + 10,
+        x: original.position.x + xOffset,
         y: original.position.y,
         z: original.position.z
       },

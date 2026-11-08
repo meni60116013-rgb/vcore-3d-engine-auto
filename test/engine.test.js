@@ -71,7 +71,7 @@ test("actualiza componentes de forma validada sin cambiar su identidad", () => {
   })), /ID de la pieza actualizada/);
 });
 
-test("duplica componentes conservando geometría y material con desplazamiento seguro", () => {
+test("duplica componentes conservando geometría y material con separación AABB segura", () => {
   const assembly = new MachineryAssembly();
   assembly.addComponent(new AssemblyComponent("source", "Soporte", "plate", {
     width: 100, height: 50, thickness: 4, material: "stainless_304",
@@ -79,13 +79,17 @@ test("duplica componentes conservando geometría y material con desplazamiento s
     rotation: { x: 0.1, y: 0.2, z: 0.3 }
   }));
 
+  const original = assembly.components.get("source");
+  const originalBounds = original.getAabb();
   const copy = assembly.duplicateComponent("source", "copy", "Soporte duplicado");
   assert.equal(copy.id, "copy");
   assert.equal(copy.name, "Soporte duplicado");
   assert.equal(copy.type, "plate");
   assert.equal(copy.material, "stainless_304");
   assert.deepEqual(copy.rotation, { x: 0.1, y: 0.2, z: 0.3 });
-  assert.deepEqual(copy.position, { x: 13, y: 4, z: 5 });
+  const copyBounds = copy.getAabb();
+  assert.ok(Math.abs(copyBounds.min.x - originalBounds.max.x - 10) < 1e-9);
+  assert.equal(assembly.findAabbOverlaps().length, 0);
   assert.equal(assembly.getTotalMetrics().count, 2);
   assert.throws(() => assembly.duplicateComponent("source", "copy"), /Ya existe/);
   assert.throws(() => assembly.duplicateComponent("missing", "new-copy"), /No existe/);

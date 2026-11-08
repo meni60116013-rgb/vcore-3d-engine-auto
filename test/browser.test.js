@@ -4,6 +4,7 @@ import { readFile, stat } from "node:fs/promises";
 import { extname, resolve, sep } from "node:path";
 import { test } from "node:test";
 import { chromium } from "playwright";
+import { AssemblyComponent } from "../src/geometryEngine.js";
 
 const root = process.cwd();
 const mime = {
@@ -150,7 +151,13 @@ test("CAD browser flow: geometry, transforms, persistence and exports", { timeou
     const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("vcore3d-assembly-v1")));
     assert.deepEqual(stored.components.map(component => component.type), ["tubular", "solid_cylinder", "plate", "tubular"]);
     assert.equal(stored.components[0].params.dOut, 40);
-    assert.equal(stored.components[3].params.position.x, stored.components[0].params.position.x + 10);
+    const originalStored = stored.components[0];
+    const duplicateStored = stored.components[3];
+    const originalPart = new AssemblyComponent(originalStored.id, originalStored.name, originalStored.type, originalStored.params);
+    const duplicatePart = new AssemblyComponent(duplicateStored.id, duplicateStored.name, duplicateStored.type, duplicateStored.params);
+    const originalBounds = originalPart.getAabb();
+    const duplicateBounds = duplicatePart.getAabb();
+    assert.ok(Math.abs(duplicateBounds.min.x - originalBounds.max.x - 10) < 1e-8);
 
     // Restoring a saved assembly exits edit mode and clears stale selection.
     await page.getByRole("button", { name: "Editar Pieza 1" }).click();
