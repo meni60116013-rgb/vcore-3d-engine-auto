@@ -131,7 +131,61 @@ export class AssemblyComponent {
 }
 
 export class MachineryAssembly {
-  constructor() { this.components = new Map(); }
+  constructor() {
+    this.components = new Map();
+    this.constraints = new Map();
+  }
+
+  addConstraint(input) {
+    if (!input || typeof input !== "object" || Array.isArray(input)) throw new TypeError("La restricción debe ser un objeto.");
+    const id = input.id === undefined || input.id === null ? "" : String(input.id).trim();
+    if (!id) throw new TypeError("El ID de restricción es obligatorio.");
+    if (this.constraints.has(id)) throw new Error("Ya existe una restricción con ID " + id + ".");
+    if (input.type !== "coincident" && input.type !== "distance") throw new TypeError("Tipo de restricción no soportado: " + input.type);
+    const componentA = input.componentA === undefined ? "" : String(input.componentA);
+    const componentB = input.componentB === undefined ? "" : String(input.componentB);
+    if (!componentA || !componentB) throw new TypeError("La restricción requiere dos componentes.");
+    if (componentA === componentB) throw new TypeError("Una restricción no puede referenciar la misma pieza dos veces.");
+    if (!this.components.has(componentA) || !this.components.has(componentB)) throw new Error("La restricción referencia componentes inexistentes.");
+    let distance = 0;
+    if (input.type === "distance") {
+      distance = finiteCoordinate(input.distance, "Distancia objetivo");
+      if (distance < 0) throw new RangeError("La distancia objetivo no puede ser negativa.");
+    } else if (input.distance !== undefined && input.distance !== 0) {
+      throw new TypeError("La restricción coincidente no admite una distancia objetivo.");
+    }
+    const tolerance = input.tolerance === undefined ? 1e-6 : finiteCoordinate(input.tolerance, "Tolerancia");
+    if (tolerance < 0) throw new RangeError("La tolerancia no puede ser negativa.");
+    const constraint = Object.freeze({ id, type: input.type, componentA, componentB, distance, tolerance });
+    this.constraints.set(id, constraint);
+    return { ...constraint };
+  }
+
+  removeConstraint(id) { return this.constraints.delete(String(id)); }
+
+  validateConstraints() {
+    return [...this.constraints.values()].map(constraint => {
+      const a = this.components.get(constraint.componentA);
+      const b = this.components.get(constraint.componentB);
+      if (!a || !b) return {
+        constraintId: constraint.id, type: constraint.type, componentA: constraint.componentA,
+        componentB: constraint.componentB, status: "invalid", actual: null,
+        target: constraint.distance, residual: null, tolerance: constraint.tolerance
+      };
+      const actual = Math.hypot(
+        b.position.x - a.position.x,
+        b.position.y - a.position.y,
+        b.position.z - a.position.z
+      );
+      if (!Number.isFinite(actual)) throw new RangeError("La evaluación de restricción excede el rango numérico permitido.");
+      const residual = Math.abs(actual - constraint.distance);
+      return {
+        constraintId: constraint.id, type: constraint.type, componentA: constraint.componentA,
+        componentB: constraint.componentB, status: residual <= constraint.tolerance ? "satisfied" : "violated",
+        actual, target: constraint.distance, residual, tolerance: constraint.tolerance
+      };
+    });
+  }
 
   addComponent(component) {
     if (!(component instanceof AssemblyComponent)) throw new TypeError("Se requiere una instancia de AssemblyComponent.");
@@ -182,8 +236,20 @@ export class MachineryAssembly {
     return this.addComponent(duplicate);
   }
 
-  removeComponent(id) { return this.components.delete(String(id)); }
-  clear() { this.components.clear(); }
+  removeComponent(id) {
+    const key = String(id);
+    const removed = this.components.delete(key);
+    if (removed) {
+      for (const [constraintId, constraint] of this.constraints) {
+        if (constraint.componentA === key || constraint.componentB === key) this.constraints.delete(constraintId);
+      }
+    }
+    return removed;
+  }
+  clear() {
+    this.components.clear();
+    this.constraints.clear();
+  }
 
   findAabbOverlaps() {
     // Calcula cada AABB una sola vez y descarta pares separados en X antes
@@ -247,12 +313,15 @@ export class MachineryAssembly {
   }
 
   toJSON() {
-    return { schemaVersion: 1, units: "mm", components: [...this.components.values()].map(c => c.toJSON()) };
+    return { schemaVersion: 2, units: "mm", components: [...this.components.values()].map(c => c.toJSON()), constraints: [...this.constraints.values()].map(c => ({ ...c })) };
   }
 
   static fromJSON(data) {
-    if (!data || data.schemaVersion !== 1 || !Array.isArray(data.components)) {
+    if (!data || ![1, 2].includes(data.schemaVersion) || !Array.isArray(data.components)) {
       throw new TypeError("Archivo de ensamblaje inválido o versión no compatible.");
+    }
+    if (data.schemaVersion === 2 && !Array.isArray(data.constraints)) {
+      throw new TypeError("El archivo v2 debe incluir una lista de restricciones.");
     }
     const assembly = new MachineryAssembly();
     for (const item of data.components) {
@@ -260,6 +329,7 @@ export class MachineryAssembly {
         ...item.params, material: item.material || item.params?.material
       }));
     }
+    for (const constraint of data.constraints || []) assembly.addConstraint(constraint);
     return assembly;
   }
 }
