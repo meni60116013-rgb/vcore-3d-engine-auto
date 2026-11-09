@@ -242,3 +242,63 @@ test("optimiza el barrido AABB calculando límites una vez y conserva el orden d
   assert.deepEqual([...calls.values()], [1, 1, 1, 1]);
   assert.ok(overlaps.every(pair => pair.approximate === true));
 });
+
+
+test("evalúa restricciones coincidentes y de distancia sin mover componentes", () => {
+  const assembly = new MachineryAssembly();
+  assembly.addComponent(new AssemblyComponent("a", "A", "plate", { width: 2, height: 2, thickness: 2 }));
+  assembly.addComponent(new AssemblyComponent("b", "B", "plate", {
+    width: 2, height: 2, thickness: 2, position: { x: 3, y: 4, z: 0 }
+  }));
+  assembly.addConstraint({ id: "co", type: "coincident", componentA: "a", componentB: "b" });
+  assembly.addConstraint({ id: "dist", type: "distance", componentA: "a", componentB: "b", distance: 5, tolerance: 1e-8 });
+  const before = { ...assembly.components.get("b").position };
+  const result = assembly.validateConstraints();
+  assert.deepEqual(result.map(item => item.status), ["violated", "satisfied"]);
+  assert.equal(result[0].actual, 5);
+  assert.equal(result[0].target, 0);
+  assert.equal(result[1].residual, 0);
+  assert.deepEqual(assembly.components.get("b").position, before);
+});
+
+test("valida entradas y referencias de restricciones", () => {
+  const assembly = new MachineryAssembly();
+  for (const id of ["a", "b"]) assembly.addComponent(new AssemblyComponent(id, id, "plate", { width: 1, height: 1, thickness: 1 }));
+  assert.throws(() => assembly.addConstraint({ type: "distance", componentA: "a", componentB: "b", distance: 1 }), /ID de restricción/);
+  assert.throws(() => assembly.addConstraint({ id: "self", type: "distance", componentA: "a", componentB: "a", distance: 1 }), /misma pieza/);
+  assert.throws(() => assembly.addConstraint({ id: "missing", type: "distance", componentA: "a", componentB: "x", distance: 1 }), /inexistentes/);
+  assert.throws(() => assembly.addConstraint({ id: "bad-type", type: "parallel", componentA: "a", componentB: "b" }), /no soportado/);
+  assert.throws(() => assembly.addConstraint({ id: "bad-distance", type: "distance", componentA: "a", componentB: "b", distance: -1 }), /no puede ser negativa/);
+  assert.throws(() => assembly.addConstraint({ id: "bad-tolerance", type: "distance", componentA: "a", componentB: "b", distance: 1, tolerance: Number.NaN }), /número finito/);
+  assembly.addConstraint({ id: "unique", type: "distance", componentA: "a", componentB: "b", distance: 1 });
+  assert.throws(() => assembly.addConstraint({ id: "unique", type: "distance", componentA: "a", componentB: "b", distance: 1 }), /Ya existe/);
+});
+
+test("elimina restricciones dependientes y limpia el ensamblaje", () => {
+  const assembly = new MachineryAssembly();
+  for (const id of ["a", "b", "c"]) assembly.addComponent(new AssemblyComponent(id, id, "plate", { width: 1, height: 1, thickness: 1 }));
+  assembly.addConstraint({ id: "ab", type: "coincident", componentA: "a", componentB: "b" });
+  assembly.addConstraint({ id: "bc", type: "distance", componentA: "b", componentB: "c", distance: 2 });
+  assert.equal(assembly.removeConstraint("missing"), false);
+  assert.equal(assembly.removeComponent("b"), true);
+  assert.equal(assembly.constraints.size, 0);
+  assembly.addConstraint({ id: "ac", type: "coincident", componentA: "a", componentB: "c" });
+  assembly.clear();
+  assert.equal(assembly.constraints.size, 0);
+  assert.equal(assembly.components.size, 0);
+});
+
+test("serializa restricciones en v2 y conserva compatibilidad de archivos v1", () => {
+  const assembly = new MachineryAssembly();
+  assembly.addComponent(new AssemblyComponent("a", "A", "plate", { width: 1, height: 1, thickness: 1 }));
+  assembly.addComponent(new AssemblyComponent("b", "B", "plate", { width: 1, height: 1, thickness: 1, position: { x: 2 } }));
+  assembly.addConstraint({ id: "spacing", type: "distance", componentA: "a", componentB: "b", distance: 2, tolerance: 0.01 });
+  const json = JSON.parse(JSON.stringify(assembly.toJSON()));
+  assert.equal(json.schemaVersion, 2);
+  assert.deepEqual(MachineryAssembly.fromJSON(json).toJSON(), assembly.toJSON());
+  const legacy = { schemaVersion: 1, units: "mm", components: json.components };
+  const migrated = MachineryAssembly.fromJSON(legacy);
+  assert.equal(migrated.components.size, 2);
+  assert.equal(migrated.constraints.size, 0);
+  assert.throws(() => MachineryAssembly.fromJSON({ schemaVersion: 2, components: [], constraints: "invalid" }), /lista de restricciones/);
+});
