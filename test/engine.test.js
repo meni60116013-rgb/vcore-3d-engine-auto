@@ -337,6 +337,25 @@ test("soluciona una cadena de distancias con anclaje explícito", () => {
   assert.ok(Math.abs(assembly.components.get("c").position.x - 12) < 1e-6);
 });
 
+test("restaura todas las posiciones si el solucionador produce coordenadas no finitas", () => {
+  const assembly = new MachineryAssembly();
+  assembly.addComponent(new AssemblyComponent("fixed", "Fija", "plate", {
+    width: 1, height: 1, thickness: 1, position: { x: 1e308 }
+  }));
+  assembly.addComponent(new AssemblyComponent("moving", "Móvil", "plate", {
+    width: 1, height: 1, thickness: 1, position: { x: 1e308 }
+  }));
+  assembly.addConstraint({
+    id: "overflow", type: "distance", componentA: "fixed", componentB: "moving", distance: 1e308
+  });
+  const before = new Map([...assembly.components].map(([id, part]) => [id, { ...part.position }]));
+
+  assert.throws(() => assembly.solveConstraints({ fixedComponentIds: ["fixed"] }), /coordenadas no finitas/);
+  for (const [id, position] of before) {
+    assert.deepEqual(assembly.components.get(id).position, position);
+  }
+});
+
 test("informa restricciones incompatibles y valida opciones del solucionador", () => {
   const assembly = new MachineryAssembly();
   assembly.addComponent(new AssemblyComponent("a", "A", "plate", { width: 1, height: 1, thickness: 1 }));
