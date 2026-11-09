@@ -362,9 +362,15 @@ test("informa restricciones incompatibles y valida opciones del solucionador", (
   assembly.addComponent(new AssemblyComponent("b", "B", "plate", { width: 1, height: 1, thickness: 1, position: { x: 2 } }));
   assembly.addConstraint({ id: "one", type: "distance", componentA: "a", componentB: "b", distance: 1 });
   assembly.addConstraint({ id: "two", type: "distance", componentA: "a", componentB: "b", distance: 3 });
-  const result = assembly.solveConstraints({ fixedComponentIds: ["a", "b"], maxIterations: 3 });
+  const before = new Map([...assembly.components].map(([id, part]) => [id, { ...part.position }]));
+  const result = assembly.solveConstraints({ fixedComponentIds: ["a"], maxIterations: 3 });
   assert.equal(result.converged, false);
-  assert.ok(result.results.some(item => item.status === "violated"));
+  assert.equal(result.rolledBack, true);
+  assert.deepEqual(result.movedComponentIds, []);
+  assert.ok(result.results.every(item => item.status === "violated"));
+  for (const [id, position] of before) {
+    assert.deepEqual(assembly.components.get(id).position, position);
+  }
   assert.throws(() => assembly.solveConstraints({ maxIterations: 0 }), /maxIterations/);
   assert.throws(() => assembly.solveConstraints({ fixedComponentIds: ["missing"] }), /inexistente/);
 });
