@@ -15,6 +15,7 @@ Aplicación web progresiva para crear ensamblajes paramétricos sencillos en mil
 - Exportación de ensamblaje a STL mediante Three.js.
 - Controles de cámara orbital, zoom y adaptación a pantalla.
 - Validación de dimensiones, coordenadas, identificadores y versiones de archivo.
+- Restricciones diagnósticas coincidente/distancia entre orígenes de piezas, con tolerancia, residual y persistencia JSON v2 (lectura compatible con v1). No desplazan ni resuelven geometría.
 - Service worker con caché del shell de la aplicación y de módulos Three.js fijados a versión.
 - Pruebas unitarias y de contrato, pruebas funcionales Chromium de selección/edición/duplicación, exportaciones, persistencia, revisión AABB y recarga offline en GitHub Actions.
 
@@ -28,7 +29,7 @@ Las dimensiones se expresan en mm. El volumen se expresa en mm³. La masa se cal
 
 ## Límites actuales
 
-Este proyecto todavía no es un CAD/CAE industrial ni sustituye software de ingeniería certificado. No implementa restricciones paramétricas entre piezas, detección de interferencias, mallado, FEA, análisis de fatiga, simulación térmica, planos técnicos, STEP/IGES ni generación de G-code. STL es una malla de triángulos y no conserva historial paramétrico.
+Este proyecto todavía no es un CAD/CAE industrial ni sustituye software de ingeniería certificado. No implementa solver de restricciones paramétricas ni detección exacta de interferencias, mallado, FEA, análisis de fatiga, simulación térmica, planos técnicos, STEP/IGES ni generación de G-code. STL es una malla de triángulos y no conserva historial paramétrico.
 
 La interfaz importa Three.js y sus módulos desde un CDN. El service worker almacena la aplicación y los módulos externos después de una carga online satisfactoria. La prueba automatizada en Chromium verifica una recarga offline posterior. La primera instalación y primera carga siguen requiriendo conexión; esto no equivale a una instalación completamente autónoma sin red.
 
