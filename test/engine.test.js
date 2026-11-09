@@ -268,6 +268,7 @@ test("valida entradas y referencias de restricciones", () => {
   assert.throws(() => assembly.addConstraint({ id: "self", type: "distance", componentA: "a", componentB: "a", distance: 1 }), /misma pieza/);
   assert.throws(() => assembly.addConstraint({ id: "missing", type: "distance", componentA: "a", componentB: "x", distance: 1 }), /inexistentes/);
   assert.throws(() => assembly.addConstraint({ id: "bad-type", type: "parallel", componentA: "a", componentB: "b" }), /no soportado/);
+  assert.throws(() => assembly.addConstraint({ id: "missing-distance", type: "distance", componentA: "a", componentB: "b" }), /requiere un objetivo/);
   assert.throws(() => assembly.addConstraint({ id: "bad-distance", type: "distance", componentA: "a", componentB: "b", distance: -1 }), /no puede ser negativa/);
   assert.throws(() => assembly.addConstraint({ id: "bad-tolerance", type: "distance", componentA: "a", componentB: "b", distance: 1, tolerance: Number.NaN }), /número finito/);
   assembly.addConstraint({ id: "unique", type: "distance", componentA: "a", componentB: "b", distance: 1 });
