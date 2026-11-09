@@ -107,6 +107,18 @@ test("CAD browser flow: geometry, transforms, persistence and exports", { timeou
     await page.locator("#add").click();
     assert.equal(await page.locator("#count").innerText(), "3");
 
+    // Add and solve an assembly distance constraint from the real UI.
+    await page.locator("#constraint-type").selectOption("distance");
+    await page.locator("#constraint-a").selectOption({ index: 1 });
+    await page.locator("#constraint-b").selectOption({ index: 2 });
+    await page.locator("#constraint-anchor").selectOption({ index: 1 });
+    await page.locator("#constraint-distance").fill("100");
+    await page.locator("#add-constraint").click();
+    assert.equal(await page.locator("#constraints .constraint-row").count(), 1);
+    await page.locator("#solve-constraints").click();
+    assert.match(await page.locator("#constraint-status").innerText(), /Convergencia correcta/i);
+    assert.match(await page.locator("#constraints").innerText(), /Cumplida/);
+
     // Clicking the visible plate in the viewport selects its tree entry.
     const canvas = page.locator("#viewport canvas");
     await canvas.scrollIntoViewIfNeeded();
@@ -151,6 +163,7 @@ test("CAD browser flow: geometry, transforms, persistence and exports", { timeou
     await page.locator("#save").click();
     const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("vcore3d-assembly-v1")));
     assert.deepEqual(stored.components.map(component => component.type), ["tubular", "solid_cylinder", "plate", "tubular"]);
+    assert.equal(stored.constraints.length, 1);
     assert.equal(stored.components[0].params.dOut, 40);
     const originalStored = stored.components[0];
     const duplicateStored = stored.components[3];
@@ -176,6 +189,7 @@ test("CAD browser flow: geometry, transforms, persistence and exports", { timeou
     // Remove a component and clear the remainder through the confirmation dialog.
     await page.getByRole("button", { name: "Quitar Pieza 1" }).click();
     assert.equal(await page.locator("#count").innerText(), "3");
+    assert.equal(await page.locator("#constraints .constraint-row").count(), 0);
     page.once("dialog", dialog => dialog.accept());
     await page.locator("#clear").click();
     assert.equal(await page.locator("#count").innerText(), "0");
