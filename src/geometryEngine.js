@@ -260,10 +260,13 @@ export class MachineryAssembly {
         return { converged: true, iterations, movedComponentIds: [...moved], results };
       }
       }
+      // A failed solve must be atomic: never leave a partially adjusted assembly.
+      rollbackPositions();
       return {
         converged: false,
         iterations,
-        movedComponentIds: [...moved],
+        movedComponentIds: [],
+        rolledBack: true,
         results: this.validateConstraints()
       };
     } catch (error) {
