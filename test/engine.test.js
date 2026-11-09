@@ -214,3 +214,31 @@ test("rechaza dimensiones y coordenadas no numéricas sin coerción implícita",
   });
   assert.deepEqual(defaults.position, { x: 0, y: 0, z: 0 });
 });
+
+
+test("optimiza el barrido AABB calculando límites una vez y conserva el orden de pares", () => {
+  const assembly = new MachineryAssembly();
+  const parts = [
+    new AssemblyComponent("a", "A", "plate", { width: 10, height: 10, thickness: 2, position: { x: 4, y: 0, z: 0 } }),
+    new AssemblyComponent("b", "B", "plate", { width: 10, height: 10, thickness: 2, position: { x: 0, y: 0, z: 0 } }),
+    new AssemblyComponent("c", "C", "plate", { width: 10, height: 10, thickness: 2, position: { x: 30, y: 0, z: 0 } }),
+    new AssemblyComponent("d", "D", "plate", { width: 10, height: 10, thickness: 2, position: { x: 6, y: 0, z: 0 } })
+  ];
+  const calls = new Map();
+  for (const part of parts) {
+    const getAabb = part.getAabb.bind(part);
+    calls.set(part.id, 0);
+    part.getAabb = () => {
+      calls.set(part.id, calls.get(part.id) + 1);
+      return getAabb();
+    };
+    assembly.addComponent(part);
+  }
+
+  const overlaps = assembly.findAabbOverlaps();
+  assert.deepEqual(overlaps.map(pair => [pair.componentA, pair.componentB]), [
+    ["a", "b"], ["a", "d"], ["b", "d"]
+  ]);
+  assert.deepEqual([...calls.values()], [1, 1, 1, 1]);
+  assert.ok(overlaps.every(pair => pair.approximate === true));
+});
