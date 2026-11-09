@@ -149,6 +149,7 @@ export class MachineryAssembly {
     if (!this.components.has(componentA) || !this.components.has(componentB)) throw new Error("La restricción referencia componentes inexistentes.");
     let distance = 0;
     if (input.type === "distance") {
+      if (input.distance === undefined) throw new TypeError("La restricción de distancia requiere un objetivo.");
       distance = finiteCoordinate(input.distance, "Distancia objetivo");
       if (distance < 0) throw new RangeError("La distancia objetivo no puede ser negativa.");
     } else if (input.distance !== undefined && input.distance !== 0) {
