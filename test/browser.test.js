@@ -160,8 +160,8 @@ test("CAD browser flow: geometry, transforms, persistence and exports", { timeou
     assert.match(stl.slice(0, 32), /solid/i);
 
     // Parse the ASCII STL structure instead of only checking its file header.
-    const facetCount = (stl.match(/^\\s*facet normal\\s+/gm) || []).length;
-    const vertices = [...stl.matchAll(/^\\s*vertex\\s+([-+0-9.eE]+)\\s+([-+0-9.eE]+)\\s+([-+0-9.eE]+)\\s*$/gm)]
+    const facetCount = (stl.match(/^\s*facet normal\s+/gm) || []).length;
+    const vertices = [...stl.matchAll(/^\s*vertex\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)\s*$/gm)]
       .map(match => match.slice(1).map(Number));
     assert.ok(facetCount > 100, "STL should contain a substantial triangle mesh");
     assert.equal(vertices.length, facetCount * 3, "each STL facet must contain exactly three vertices");
