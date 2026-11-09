@@ -303,3 +303,49 @@ test("serializa restricciones en v2 y conserva compatibilidad de archivos v1", (
   assert.equal(migrated.constraints.size, 0);
   assert.throws(() => MachineryAssembly.fromJSON({ schemaVersion: 2, components: [], constraints: "invalid" }), /lista de restricciones/);
 });
+
+
+test("soluciona distancias moviendo piezas y conserva el anclaje", () => {
+  const assembly = new MachineryAssembly();
+  assembly.addComponent(new AssemblyComponent("base", "Base", "plate", { width: 2, height: 2, thickness: 2 }));
+  assembly.addComponent(new AssemblyComponent("slider", "Deslizador", "plate", {
+    width: 2, height: 2, thickness: 2, position: { x: 3, y: 4, z: 0 }
+  }));
+  assembly.addConstraint({ id: "gap", type: "distance", componentA: "base", componentB: "slider", distance: 10, tolerance: 1e-8 });
+  const result = assembly.solveConstraints();
+  assert.equal(result.converged, true);
+  assert.equal(result.results[0].status, "satisfied");
+  assert.ok(Math.abs(result.results[0].actual - 10) < 1e-8);
+  assert.deepEqual(assembly.components.get("base").position, { x: 0, y: 0, z: 0 });
+  assert.deepEqual(result.movedComponentIds, ["slider"]);
+});
+
+test("soluciona una cadena de distancias con anclaje explícito", () => {
+  const assembly = new MachineryAssembly();
+  for (const [id, x] of [["a", 0], ["b", 4], ["c", 12]]) {
+    assembly.addComponent(new AssemblyComponent(id, id, "plate", {
+      width: 1, height: 1, thickness: 1, position: { x }
+    }));
+  }
+  assembly.addConstraint({ id: "ab", type: "distance", componentA: "a", componentB: "b", distance: 5 });
+  assembly.addConstraint({ id: "bc", type: "distance", componentA: "b", componentB: "c", distance: 7 });
+  const result = assembly.solveConstraints({ fixedComponentIds: ["a"] });
+  assert.equal(result.converged, true);
+  assert.deepEqual(result.results.map(item => item.status), ["satisfied", "satisfied"]);
+  assert.equal(assembly.components.get("a").position.x, 0);
+  assert.ok(Math.abs(assembly.components.get("b").position.x - 5) < 1e-6);
+  assert.ok(Math.abs(assembly.components.get("c").position.x - 12) < 1e-6);
+});
+
+test("informa restricciones incompatibles y valida opciones del solucionador", () => {
+  const assembly = new MachineryAssembly();
+  assembly.addComponent(new AssemblyComponent("a", "A", "plate", { width: 1, height: 1, thickness: 1 }));
+  assembly.addComponent(new AssemblyComponent("b", "B", "plate", { width: 1, height: 1, thickness: 1, position: { x: 2 } }));
+  assembly.addConstraint({ id: "one", type: "distance", componentA: "a", componentB: "b", distance: 1 });
+  assembly.addConstraint({ id: "two", type: "distance", componentA: "a", componentB: "b", distance: 3 });
+  const result = assembly.solveConstraints({ fixedComponentIds: ["a", "b"], maxIterations: 3 });
+  assert.equal(result.converged, false);
+  assert.ok(result.results.some(item => item.status === "violated"));
+  assert.throws(() => assembly.solveConstraints({ maxIterations: 0 }), /maxIterations/);
+  assert.throws(() => assembly.solveConstraints({ fixedComponentIds: ["missing"] }), /inexistente/);
+});
