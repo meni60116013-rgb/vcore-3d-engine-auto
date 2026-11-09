@@ -109,8 +109,8 @@ test("CAD browser flow: geometry, transforms, persistence and exports", { timeou
 
     // Add and solve an assembly distance constraint from the real UI.
     await page.locator("#constraint-type").selectOption("distance");
-    await page.locator("#constraint-a").selectOption({ index: 1 });
-    await page.locator("#constraint-b").selectOption({ index: 2 });
+    await page.locator("#constraint-a").selectOption({ index: 0 });
+    await page.locator("#constraint-b").selectOption({ index: 1 });
     await page.locator("#constraint-anchor").selectOption({ index: 1 });
     await page.locator("#constraint-distance").fill("100");
     await page.locator("#add-constraint").click();
