@@ -164,6 +164,8 @@ test("CAD browser flow: geometry, transforms, persistence and exports", { timeou
     const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("vcore3d-assembly-v1")));
     assert.deepEqual(stored.components.map(component => component.type), ["tubular", "solid_cylinder", "plate", "tubular"]);
     assert.equal(stored.constraints.length, 1);
+    assert.equal(stored.constraints[0].componentA, stored.components[0].id);
+    assert.equal(stored.constraints[0].componentB, stored.components[1].id);
     assert.equal(stored.components[0].params.dOut, 40);
     const originalStored = stored.components[0];
     const duplicateStored = stored.components[3];
