@@ -5,7 +5,7 @@
 - Tres sólidos paramétricos básicos.
 - Transformaciones rígidas por componente (traslación y rotación).
 - Selección desde el árbol y el visor 3D, edición validada y duplicación con desplazamiento automático.
-- Filtro de candidatos de solapamiento mediante AABB con rotaciones; puede producir falsos positivos y no confirma colisiones reales.
+- Filtro de candidatos mediante AABB rotadas y barrido en X (sweep-and-prune); calcula límites una vez por pieza, conserva el orden de pares y puede producir falsos positivos. No confirma colisiones reales.
 - Masa y volumen analíticos para las tres geometrías.
 - Densidades nominales seleccionables.
 - Persistencia local, JSON y STL.
