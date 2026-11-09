@@ -83,7 +83,8 @@ test("CAD browser flow: geometry, transforms, persistence and exports", { timeou
     const jsonChunks = [];
     for await (const chunk of jsonStream) jsonChunks.push(chunk);
     const exported = JSON.parse(Buffer.concat(jsonChunks).toString("utf8"));
-    assert.equal(exported.schemaVersion, 1);
+    assert.equal(exported.schemaVersion, 2);
+    assert.deepEqual(exported.constraints, []);
     assert.equal(exported.components.length, 1);
     assert.equal(exported.components[0].type, "tubular");
     assert.deepEqual(exported.components[0].params.position, { x: 10, y: -5, z: 20 });
