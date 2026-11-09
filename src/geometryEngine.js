@@ -188,6 +188,76 @@ export class MachineryAssembly {
     });
   }
 
+  solveConstraints(options = {}) {
+    if (!options || typeof options !== "object" || Array.isArray(options)) {
+      throw new TypeError("Las opciones del solucionador deben ser un objeto.");
+    }
+    const maxIterations = options.maxIterations === undefined ? 50 : options.maxIterations;
+    if (!Number.isInteger(maxIterations) || maxIterations < 1 || maxIterations > 10000) {
+      throw new RangeError("maxIterations debe ser un entero entre 1 y 10000.");
+    }
+    const fixedInput = options.fixedComponentIds === undefined ? [] : options.fixedComponentIds;
+    if (!Array.isArray(fixedInput)) throw new TypeError("fixedComponentIds debe ser una lista.");
+    const fixed = new Set(fixedInput.map(String));
+    for (const id of fixed) {
+      if (!this.components.has(id)) throw new Error("Componente fijo inexistente: " + id);
+    }
+    const constraints = [...this.constraints.values()];
+    if (constraints.length === 0) {
+      return { converged: true, iterations: 0, movedComponentIds: [], results: [] };
+    }
+    if (fixedInput.length === 0) fixed.add(constraints[0].componentA);
+
+    const moved = new Set();
+    let iterations = 0;
+    for (; iterations < maxIterations; iterations += 1) {
+      for (const constraint of constraints) {
+        const a = this.components.get(constraint.componentA);
+        const b = this.components.get(constraint.componentB);
+        if (!a || !b) continue;
+        const dx = b.position.x - a.position.x;
+        const dy = b.position.y - a.position.y;
+        const dz = b.position.z - a.position.z;
+        const actual = Math.hypot(dx, dy, dz);
+        if (!Number.isFinite(actual)) throw new RangeError("El solucionador excedió el rango numérico permitido.");
+        if (Math.abs(actual - constraint.distance) <= constraint.tolerance) continue;
+
+        const moveA = fixed.has(constraint.componentB) && !fixed.has(constraint.componentA);
+        const moveB = !moveA && !fixed.has(constraint.componentB);
+        if (!moveA && !moveB) continue;
+
+        let ux = actual > 0 ? dx / actual : 1;
+        let uy = actual > 0 ? dy / actual : 0;
+        let uz = actual > 0 ? dz / actual : 0;
+        if (moveB) {
+          b.position.x = a.position.x + ux * constraint.distance;
+          b.position.y = a.position.y + uy * constraint.distance;
+          b.position.z = a.position.z + uz * constraint.distance;
+          moved.add(b.id);
+        } else {
+          a.position.x = b.position.x - ux * constraint.distance;
+          a.position.y = b.position.y - uy * constraint.distance;
+          a.position.z = b.position.z - uz * constraint.distance;
+          moved.add(a.id);
+        }
+        if (![a.position.x, a.position.y, a.position.z, b.position.x, b.position.y, b.position.z].every(Number.isFinite)) {
+          throw new RangeError("El solucionador generó coordenadas no finitas.");
+        }
+      }
+      const results = this.validateConstraints();
+      if (results.every(result => result.status === "satisfied")) {
+        iterations += 1;
+        return { converged: true, iterations, movedComponentIds: [...moved], results };
+      }
+    }
+    return {
+      converged: false,
+      iterations,
+      movedComponentIds: [...moved],
+      results: this.validateConstraints()
+    };
+  }
+
   addComponent(component) {
     if (!(component instanceof AssemblyComponent)) throw new TypeError("Se requiere una instancia de AssemblyComponent.");
     if (this.components.has(component.id)) throw new Error(`Ya existe una pieza con ID ${component.id}.`);
