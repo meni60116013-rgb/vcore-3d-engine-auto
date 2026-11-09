@@ -2,7 +2,7 @@ name: VCORE 3D Validation and Source Bundle
 
 on:
   push:
-    branches: [main, "audit/**", "upgrade/**"]
+    branches: [main, "audit/**"]
   pull_request:
     branches: [main]
   workflow_dispatch:
