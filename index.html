@@ -83,9 +83,16 @@ new ResizeObserver(resize).observe($("viewport"));resize();
 function geometryFor(c){
  const p=c.params;let g;
  if(c.type==="tubular"){
-  const shape=new THREE.Shape();shape.absarc(0,0,p.dOut/2,0,Math.PI*2,false);
-  const hole=new THREE.Path();hole.absarc(0,0,(p.dOut-2*p.thickness)/2,0,Math.PI*2,true);shape.holes.push(hole);
-  g=new THREE.ExtrudeGeometry(shape,{depth:p.length,bevelEnabled:false,curveSegments:48});
+  const innerRadius=(p.dOut-2*p.thickness)/2,outerRadius=p.dOut/2,halfLength=p.length/2;
+  const profile=[
+   new THREE.Vector2(innerRadius,-halfLength),
+   new THREE.Vector2(outerRadius,-halfLength),
+   new THREE.Vector2(outerRadius,halfLength),
+   new THREE.Vector2(innerRadius,halfLength)
+  ];
+  // Revolving a closed rectangular wall profile avoids the near-duplicate
+  // 0/2π endpoints produced by a full-circle ExtrudeGeometry contour.
+  g=new THREE.LatheGeometry(profile,48);g.rotateX(Math.PI/2);
  }else if(c.type==="solid_cylinder"){
   g=new THREE.CylinderGeometry(p.diameter/2,p.diameter/2,p.length,48);g.rotateX(Math.PI/2);
  }else{g=new THREE.BoxGeometry(p.width,p.height,p.thickness)}
