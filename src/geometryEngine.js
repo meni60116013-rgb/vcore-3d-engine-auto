@@ -186,33 +186,43 @@ export class MachineryAssembly {
   clear() { this.components.clear(); }
 
   findAabbOverlaps() {
-    const components = [...this.components.values()];
+    // Calcula cada AABB una sola vez y descarta pares separados en X antes
+    // de evaluar los otros ejes. El barrido conserva el resultado aproximado.
+    const entries = [...this.components.values()]
+      .map((component, index) => ({ component, index, bounds: component.getAabb() }))
+      .sort((a, b) => a.bounds.min.x - b.bounds.min.x || a.index - b.index);
     const overlaps = [];
-    for (let i = 0; i < components.length; i += 1) {
-      const boundsA = components[i].getAabb();
-      for (let j = i + 1; j < components.length; j += 1) {
-        const boundsB = components[j].getAabb();
+
+    for (let i = 0; i < entries.length; i += 1) {
+      const entryA = entries[i];
+      for (let j = i + 1; j < entries.length; j += 1) {
+        const entryB = entries[j];
+        if (entryB.bounds.min.x >= entryA.bounds.max.x) break;
+
         const overlap = {
-          x: Math.min(boundsA.max.x, boundsB.max.x) - Math.max(boundsA.min.x, boundsB.min.x),
-          y: Math.min(boundsA.max.y, boundsB.max.y) - Math.max(boundsA.min.y, boundsB.min.y),
-          z: Math.min(boundsA.max.z, boundsB.max.z) - Math.max(boundsA.min.z, boundsB.min.z)
+          x: Math.min(entryA.bounds.max.x, entryB.bounds.max.x) - Math.max(entryA.bounds.min.x, entryB.bounds.min.x),
+          y: Math.min(entryA.bounds.max.y, entryB.bounds.max.y) - Math.max(entryA.bounds.min.y, entryB.bounds.min.y),
+          z: Math.min(entryA.bounds.max.z, entryB.bounds.max.z) - Math.max(entryA.bounds.min.z, entryB.bounds.min.z)
         };
         if (Object.values(overlap).some(value => !Number.isFinite(value))) {
           throw new RangeError("El solapamiento AABB excede el rango numérico permitido.");
         }
-        if (overlap.x > 0 && overlap.y > 0 && overlap.z > 0) {
+        if (overlap.y > 0 && overlap.z > 0) {
           overlaps.push({
-            componentA: components[i].id,
-            nameA: components[i].name,
-            componentB: components[j].id,
-            nameB: components[j].name,
+            componentA: entryA.component.id,
+            nameA: entryA.component.name,
+            componentB: entryB.component.id,
+            nameB: entryB.component.name,
             overlap,
-            approximate: true
+            approximate: true,
+            _order: [Math.min(entryA.index, entryB.index), Math.max(entryA.index, entryB.index)]
           });
         }
       }
     }
-    return overlaps;
+
+    overlaps.sort((a, b) => a._order[0] - b._order[0] || a._order[1] - b._order[1]);
+    return overlaps.map(({ _order, ...overlap }) => overlap);
   }
 
   getTotalMetrics() {
