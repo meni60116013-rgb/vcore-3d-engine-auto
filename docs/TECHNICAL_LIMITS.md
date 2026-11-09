@@ -11,7 +11,7 @@
 - Persistencia local, JSON y STL.
 - Validación de entradas y versiones de ensamblaje.
 - Pruebas unitarias, pruebas funcionales Chromium y recarga offline posterior a la primera carga online.
-- Restricciones coincidente/distancia entre orígenes, evaluación de residual y solucionador iterativo de traslación con anclajes; informa conflictos no convergentes. JSON v2 con lectura compatible de v1.
+- Restricciones coincidente/distancia entre orígenes, evaluación de residual y solucionador iterativo de traslación con anclajes; informa conflictos no convergentes y revierte las posiciones originales si no logra converger (operación atómica). JSON v2 con lectura compatible de v1.
 - Paquete de código fuente generado por GitHub Actions.
 
 ## No implementado / no certificado
