@@ -159,6 +159,25 @@ test("CAD browser flow: geometry, transforms, persistence and exports", { timeou
     assert.ok(stl.length > 400, "STL export should contain triangle data for all solids");
     assert.match(stl.slice(0, 32), /solid/i);
 
+    // Parse the ASCII STL structure instead of only checking its file header.
+    const facetCount = (stl.match(/^\\s*facet normal\\s+/gm) || []).length;
+    const vertices = [...stl.matchAll(/^\\s*vertex\\s+([-+0-9.eE]+)\\s+([-+0-9.eE]+)\\s+([-+0-9.eE]+)\\s*$/gm)]
+      .map(match => match.slice(1).map(Number));
+    assert.ok(facetCount > 100, "STL should contain a substantial triangle mesh");
+    assert.equal(vertices.length, facetCount * 3, "each STL facet must contain exactly three vertices");
+    assert.ok(vertices.flat().every(Number.isFinite), "STL vertices must all be finite numbers");
+    for (let index = 0; index < vertices.length; index += 3) {
+      const [a, b, c] = vertices.slice(index, index + 3);
+      const ab = b.map((value, axis) => value - a[axis]);
+      const ac = c.map((value, axis) => value - a[axis]);
+      const cross = [
+        ab[1] * ac[2] - ab[2] * ac[1],
+        ab[2] * ac[0] - ab[0] * ac[2],
+        ab[0] * ac[1] - ab[1] * ac[0]
+      ];
+      assert.ok(Math.hypot(...cross) > 1e-10, "STL must not contain degenerate triangles");
+    }
+
     // Local persistence must survive a reload and restore all components.
     await page.locator("#save").click();
     const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("vcore3d-assembly-v1")));
