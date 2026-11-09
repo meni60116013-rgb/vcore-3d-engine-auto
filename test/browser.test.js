@@ -175,7 +175,8 @@ test("CAD browser flow: geometry, transforms, persistence and exports", { timeou
         ab[2] * ac[0] - ab[0] * ac[2],
         ab[0] * ac[1] - ab[1] * ac[0]
       ];
-      assert.ok(Math.hypot(...cross) > 1e-10, "STL must not contain degenerate triangles");
+      const twiceArea = Math.hypot(...cross);
+      assert.ok(twiceArea > 1e-10, `STL contains a degenerate triangle at facet ${index / 3}: ${JSON.stringify([a, b, c])}`);
     }
 
     // Local persistence must survive a reload and restore all components.
