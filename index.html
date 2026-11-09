@@ -22,7 +22,7 @@ button{cursor:pointer;font-weight:650}.primary{background:var(--accent);color:#0
 .metric{background:#0b141d;border:1px solid var(--line);border-radius:8px;padding:10px 7px}.metric b{display:block;font-size:16px;color:var(--accent)}.metric small{font-size:10px;color:var(--muted)}
 #parts,#overlaps{display:grid;gap:7px}.part{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:7px;background:#0b141d;border:1px solid var(--line);border-radius:7px}.part.selected{border-color:var(--accent);background:#10252a}.part strong{font-size:12px}.part small{display:block;color:var(--muted);font-size:10px}.part button{width:auto;padding:5px 7px}.part .part-select{flex:1;min-width:0;text-align:left;background:transparent;border-color:transparent}.part .part-actions{display:flex;gap:4px;flex-shrink:0}.part .part-actions button{padding:5px 6px;font-size:10px}.part .remove{color:#ffaaaa}.hint{font-size:10px;line-height:1.4;color:var(--muted);margin:7px 0}
 #workspace{min-width:0;display:flex;flex-direction:column;min-height:550px}#toolbar{padding:10px 14px;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:center;flex-wrap:wrap}#toolbar button{width:auto;padding:8px 12px;font-size:12px}#viewport{flex:1;min-height:480px;position:relative}#viewport canvas{display:block;width:100%;height:100%}
-#status{font-size:11px;color:var(--muted);margin-left:auto}#error{color:#ff9b9b;font-size:12px;min-height:18px}
+#status{font-size:11px;color:var(--muted);margin-left:auto}#error{color:#ff9b9b;font-size:12px;min-height:18px}#constraints{display:grid;gap:7px}.constraint-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px;background:#0b141d;border:1px solid var(--line);border-radius:7px}.constraint-row small{display:block;color:var(--muted);font-size:10px}.constraint-row button{width:auto;padding:5px 8px}.constraint-ok{color:var(--accent)}.constraint-bad{color:#ffaaaa}
 @media(max-width:800px){main{grid-template-columns:1fr}aside{max-height:none;border-right:0;border-bottom:1px solid var(--line)}#workspace{min-height:55vh}#viewport{min-height:55vh}}
 </style>
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
@@ -43,6 +43,15 @@ button{cursor:pointer;font-weight:650}.primary{background:var(--accent);color:#0
 </section>
 <section><h2>Resumen del ensamblaje</h2><div class="metrics"><div class="metric"><b id="count">0</b><small>PIEZAS</small></div><div class="metric"><b id="mass">0</b><small>MASA kg</small></div><div class="metric"><b id="volume">0</b><small>VOLUMEN mm³</small></div></div></section>
 <section><h2>Candidatos de solapamiento AABB</h2><div class="metric"><b id="overlap-count">0</b><small>CANDIDATOS APROXIMADOS</small></div><p class="hint">Filtro por cajas envolventes. Puede señalar falsos positivos; no es una detección exacta de colisiones.</p><div id="overlaps"><div class="part"><small>Sin candidatos detectados</small></div></div></section>
+<section><h2>Restricciones de ensamblaje</h2>
+<label for="constraint-type">Tipo</label><select id="constraint-type"><option value="distance">Distancia entre orígenes</option><option value="coincident">Coincidencia de orígenes</option></select>
+<div class="grid2"><div><label for="constraint-a">Pieza A</label><select id="constraint-a"></select></div><div><label for="constraint-b">Pieza B</label><select id="constraint-b"></select></div></div>
+<div class="grid2"><div><label for="constraint-distance">Distancia objetivo (mm)</label><input id="constraint-distance" type="number" min="0" step="any" value="100"></div><div><label for="constraint-tolerance">Tolerancia (mm)</label><input id="constraint-tolerance" type="number" min="0" step="any" value="0.001"></div></div>
+<label for="constraint-anchor">Pieza fija al resolver</label><select id="constraint-anchor"><option value="">Anclaje automático</option></select>
+<div class="grid2"><button id="add-constraint" class="secondary" type="button">Añadir restricción</button><button id="solve-constraints" class="primary" type="button">Resolver ensamblaje</button></div>
+<p class="hint">El solucionador traslada los orígenes; no cambia rotaciones ni geometría interna. Si hay conflictos, informa que no convergió.</p>
+<div id="constraint-status" class="hint" role="status">Sin restricciones.</div><div id="constraints"><div class="part"><small>Sin restricciones todavía</small></div></div>
+</section>
 <section><h2>Árbol de piezas</h2><div id="parts"><div class="part"><small>Sin componentes todavía</small></div></div></section>
 <section class="actions"><button class="secondary" id="save">Guardar local</button><button class="secondary" id="load">Cargar local</button><button class="secondary" id="json">Exportar JSON</button><button class="secondary" id="stl">Exportar STL</button></section>
 </aside>
@@ -91,7 +100,39 @@ function renderAssembly(){
  }
  updateSummary();
 }
+function renderConstraintPanel(){
+ const type=$("constraint-type").value;
+ $("constraint-distance").disabled=type==="coincident";
+ const previousA=$("constraint-a").value,previousB=$("constraint-b").value,previousAnchor=$("constraint-anchor").value;
+ for(const id of ["constraint-a","constraint-b","constraint-anchor"]){
+  const select=$(id),keep=select.value;select.replaceChildren();
+  if(id==="constraint-anchor"){const auto=document.createElement("option");auto.value="";auto.textContent="Anclaje automático";select.append(auto)}
+  for(const component of assembly.components.values()){
+   const option=document.createElement("option");option.value=component.id;option.textContent=component.name+" · "+component.id;select.append(option);
+  }
+  if([...select.options].some(option=>option.value===keep))select.value=keep;
+ }
+ if(previousA&&[...$("constraint-a").options].some(option=>option.value===previousA))$("constraint-a").value=previousA;
+ if(previousB&&[...$("constraint-b").options].some(option=>option.value===previousB))$("constraint-b").value=previousB;
+ if(previousAnchor&&[...$("constraint-anchor").options].some(option=>option.value===previousAnchor))$("constraint-anchor").value=previousAnchor;
+ const disabled=assembly.components.size<2;
+ $("constraint-a").disabled=disabled;$("constraint-b").disabled=disabled;$("add-constraint").disabled=disabled;$("solve-constraints").disabled=assembly.constraints.size===0;
+ const list=$("constraints");list.replaceChildren();
+ const results=new Map(assembly.validateConstraints().map(result=>[result.constraintId,result]));
+ if(!assembly.constraints.size){const empty=document.createElement("div");empty.className="part";empty.textContent="Sin restricciones todavía";list.append(empty);return}
+ for(const constraint of assembly.constraints.values()){
+  const result=results.get(constraint.id),row=document.createElement("div");row.className="constraint-row";
+  const info=document.createElement("div"),title=document.createElement("strong"),detail=document.createElement("small");
+  title.textContent=constraint.type==="coincident"?"Coincidencia":"Distancia "+constraint.distance+" mm";
+  detail.textContent=constraint.componentA+" ↔ "+constraint.componentB+" · "+(result?result.status==="satisfied"?"Cumplida":"Incumplida":"Inválida")+(result&&result.actual!==null?" · actual "+result.actual.toFixed(4)+" mm":"");
+  detail.className=result?.status==="satisfied"?"constraint-ok":"constraint-bad";info.append(title,detail);
+  const remove=document.createElement("button");remove.type="button";remove.className="danger";remove.textContent="Quitar";remove.setAttribute("aria-label","Quitar restricción "+constraint.id);
+  remove.addEventListener("click",()=>{assembly.removeConstraint(constraint.id);$("constraint-status").textContent="Restricción eliminada.";renderAssembly()});
+  row.append(info,remove);list.append(row);
+ }
+}
 function updateSummary(){
+ renderConstraintPanel();
  const m=assembly.getTotalMetrics();$("count").textContent=m.count;$("mass").textContent=m.totalMass.toFixed(3);$("volume").textContent=m.totalVolume.toFixed(1);
  const candidates=assembly.findAabbOverlaps();$("overlap-count").textContent=candidates.length;
  const overlapList=$("overlaps");overlapList.replaceChildren();
@@ -137,6 +178,26 @@ function updateLabels(){
  $("l1").textContent=labels[0];$("l2").textContent=labels[1];$("l3").textContent=labels[2];$("p2").disabled=type==="solid_cylinder";
 }
 $("type").addEventListener("change",updateLabels);updateLabels();
+$("constraint-type").addEventListener("change",renderConstraintPanel);
+$("add-constraint").addEventListener("click",()=>{
+ try{
+  const type=$("constraint-type").value,componentA=$("constraint-a").value,componentB=$("constraint-b").value;
+  const input={id:newComponentId(),type,componentA,componentB,tolerance:Number($("constraint-tolerance").value)};
+  if(type==="distance")input.distance=Number($("constraint-distance").value);
+  assembly.addConstraint(input);$("constraint-status").textContent="Restricción añadida. Ejecuta Resolver ensamblaje para ajustar posiciones.";renderAssembly();
+ }catch(error){$("constraint-status").textContent=error.message}
+});
+$("solve-constraints").addEventListener("click",()=>{
+ try{
+  const anchor=$("constraint-anchor").value;
+  const result=assembly.solveConstraints({fixedComponentIds:anchor?[anchor]:[]});
+  renderAssembly();
+  $("constraint-status").textContent=result.converged
+   ?"Convergencia correcta en "+result.iterations+" iteraciones. Piezas movidas: "+result.movedComponentIds.length+"."
+   :"No convergió en "+result.iterations+" iteraciones. Revisa anclajes y restricciones incompatibles.";
+ }catch(error){$("constraint-status").textContent=error.message}
+});
+
 $("add").addEventListener("click",()=>{
  try{
   const type=$("type").value,p1=Number($("p1").value),p2=Number($("p2").value),p3=Number($("p3").value);
