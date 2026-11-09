@@ -208,14 +208,16 @@ export class MachineryAssembly {
           throw new RangeError("El solapamiento AABB excede el rango numérico permitido.");
         }
         if (overlap.y > 0 && overlap.z > 0) {
+          const first = entryA.index < entryB.index ? entryA : entryB;
+          const second = entryA.index < entryB.index ? entryB : entryA;
           overlaps.push({
-            componentA: entryA.component.id,
-            nameA: entryA.component.name,
-            componentB: entryB.component.id,
-            nameB: entryB.component.name,
+            componentA: first.component.id,
+            nameA: first.component.name,
+            componentB: second.component.id,
+            nameB: second.component.name,
             overlap,
             approximate: true,
-            _order: [Math.min(entryA.index, entryB.index), Math.max(entryA.index, entryB.index)]
+            _order: [first.index, second.index]
           });
         }
       }
