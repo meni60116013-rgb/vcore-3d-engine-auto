@@ -11,12 +11,14 @@
 - Persistencia local, JSON y STL.
 - Validación de entradas y versiones de ensamblaje.
 - Pruebas unitarias, pruebas funcionales Chromium y recarga offline posterior a la primera carga online.
+- Restricciones diagnósticas coincidente/distancia entre orígenes, con tolerancia y evaluación de residual; JSON v2 con lectura compatible de v1.
 - Paquete de código fuente generado por GitHub Actions.
 
 ## No implementado / no certificado
 
 - Validación física en dispositivos Android reales y pruebas en una gama amplia de navegadores.
-- Restricciones de ensamblaje (coincidente, concéntrica, paralela, distancia, ángulo).
+- Solver geométrico que mueva piezas para satisfacer restricciones; solo se evalúan coincidencia y distancia entre orígenes.
+- Restricciones concéntricas, paralelas y angulares.
 - Detección de colisiones e interferencias.
 - B-rep, superficies NURBS y operaciones booleanas robustas.
 - STEP, IGES, Parasolid y otros formatos CAD sólidos.
