@@ -208,9 +208,19 @@ export class MachineryAssembly {
     }
     if (fixedInput.length === 0) fixed.add(constraints[0].componentA);
 
+    const originalPositions = new Map(
+      [...this.components].map(([id, component]) => [id, { ...component.position }])
+    );
+    const rollbackPositions = () => {
+      for (const [id, position] of originalPositions) {
+        const component = this.components.get(id);
+        if (component) Object.assign(component.position, position);
+      }
+    };
     const moved = new Set();
     let iterations = 0;
-    for (; iterations < maxIterations; iterations += 1) {
+    try {
+      for (; iterations < maxIterations; iterations += 1) {
       for (const constraint of constraints) {
         const a = this.components.get(constraint.componentA);
         const b = this.components.get(constraint.componentB);
@@ -249,13 +259,17 @@ export class MachineryAssembly {
         iterations += 1;
         return { converged: true, iterations, movedComponentIds: [...moved], results };
       }
+      }
+      return {
+        converged: false,
+        iterations,
+        movedComponentIds: [...moved],
+        results: this.validateConstraints()
+      };
+    } catch (error) {
+      rollbackPositions();
+      throw error;
     }
-    return {
-      converged: false,
-      iterations,
-      movedComponentIds: [...moved],
-      results: this.validateConstraints()
-    };
   }
 
   addComponent(component) {
