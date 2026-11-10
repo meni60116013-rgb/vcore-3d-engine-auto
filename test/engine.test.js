@@ -374,3 +374,36 @@ test("informa restricciones incompatibles y valida opciones del solucionador", (
   assert.throws(() => assembly.solveConstraints({ maxIterations: 0 }), /maxIterations/);
   assert.throws(() => assembly.solveConstraints({ fixedComponentIds: ["missing"] }), /inexistente/);
 });
+
+
+test("rechaza vectores de posición y rotación que no sean objetos XYZ", () => {
+  const dimensions = { width: 10, height: 10, thickness: 2 };
+  for (const [field, value] of [
+    ["position", null], ["position", "0,0,0"], ["position", []],
+    ["rotation", null], ["rotation", "0,0,0"], ["rotation", []]
+  ]) {
+    assert.throws(
+      () => new AssemblyComponent("invalid-vector", "Pieza", "plate", { ...dimensions, [field]: value }),
+      /debe ser un objeto con coordenadas XYZ/
+    );
+  }
+  const defaulted = new AssemblyComponent("default-vectors", "Pieza", "plate", dimensions);
+  assert.deepEqual(defaulted.position, { x: 0, y: 0, z: 0 });
+  assert.deepEqual(defaulted.rotation, { x: 0, y: 0, z: 0 });
+});
+
+test("rechaza unidades JSON incompatibles y conserva lectura de archivos v1 en mm", () => {
+  const component = new AssemblyComponent("unit-part", "Pieza", "plate", {
+    width: 10, height: 10, thickness: 2
+  }).toJSON();
+  const legacy = { schemaVersion: 1, units: "mm", components: [component] };
+  assert.equal(MachineryAssembly.fromJSON(legacy).components.size, 1);
+  assert.throws(
+    () => MachineryAssembly.fromJSON({ ...legacy, units: "in" }),
+    /Unidades de archivo no compatibles/
+  );
+  assert.throws(
+    () => MachineryAssembly.fromJSON({ ...legacy, units: null }),
+    /Unidades de archivo no compatibles/
+  );
+});
