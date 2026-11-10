@@ -21,6 +21,13 @@ const finiteCoordinate = (value, label) => {
   }
   return number;
 };
+const coordinateObject = (value, label) => {
+  if (value === undefined) return {};
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new TypeError(`${label} debe ser un objeto con coordenadas XYZ.`);
+  }
+  return value;
+};
 
 export class AssemblyComponent {
   constructor(id, name, type, params = {}) {
@@ -32,15 +39,17 @@ export class AssemblyComponent {
     this.params = { ...params };
     this.material = params.material || "steel";
     if (!MATERIALS[this.material]) throw new TypeError(`Material no soportado: ${this.material}`);
+    const position = coordinateObject(params.position, "Posición");
+    const rotation = coordinateObject(params.rotation, "Rotación");
     this.position = {
-      x: finiteCoordinate(params.position?.x, "Posición X"),
-      y: finiteCoordinate(params.position?.y, "Posición Y"),
-      z: finiteCoordinate(params.position?.z, "Posición Z")
+      x: finiteCoordinate(position.x, "Posición X"),
+      y: finiteCoordinate(position.y, "Posición Y"),
+      z: finiteCoordinate(position.z, "Posición Z")
     };
     this.rotation = {
-      x: finiteCoordinate(params.rotation?.x, "Rotación X"),
-      y: finiteCoordinate(params.rotation?.y, "Rotación Y"),
-      z: finiteCoordinate(params.rotation?.z, "Rotación Z")
+      x: finiteCoordinate(rotation.x, "Rotación X"),
+      y: finiteCoordinate(rotation.y, "Rotación Y"),
+      z: finiteCoordinate(rotation.z, "Rotación Z")
     };
     this.validate();
   }
@@ -407,6 +416,9 @@ export class MachineryAssembly {
   static fromJSON(data) {
     if (!data || ![1, 2].includes(data.schemaVersion) || !Array.isArray(data.components)) {
       throw new TypeError("Archivo de ensamblaje inválido o versión no compatible.");
+    }
+    if (data.units !== undefined && data.units !== "mm") {
+      throw new TypeError("Unidades de archivo no compatibles; se requiere mm.");
     }
     if (data.schemaVersion === 2 && !Array.isArray(data.constraints)) {
       throw new TypeError("El archivo v2 debe incluir una lista de restricciones.");
