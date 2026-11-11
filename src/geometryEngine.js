@@ -414,7 +414,8 @@ export class MachineryAssembly {
   }
 
   static fromJSON(data) {
-    if (!data || ![1, 2].includes(data.schemaVersion) || !Array.isArray(data.components)) {
+    if (!data || typeof data !== "object" || Array.isArray(data) ||
+        ![1, 2].includes(data.schemaVersion) || !Array.isArray(data.components)) {
       throw new TypeError("Archivo de ensamblaje inválido o versión no compatible.");
     }
     if (data.units !== undefined && data.units !== "mm") {
@@ -424,9 +425,15 @@ export class MachineryAssembly {
       throw new TypeError("El archivo v2 debe incluir una lista de restricciones.");
     }
     const assembly = new MachineryAssembly();
-    for (const item of data.components) {
+    for (const [index, item] of data.components.entries()) {
+      if (!item || typeof item !== "object" || Array.isArray(item)) {
+        throw new TypeError(`Componente ${index} inválido: debe ser un objeto.`);
+      }
+      if (!item.params || typeof item.params !== "object" || Array.isArray(item.params)) {
+        throw new TypeError(`Parámetros del componente ${index} inválidos: se requiere un objeto.`);
+      }
       assembly.addComponent(new AssemblyComponent(item.id, item.name, item.type, {
-        ...item.params, material: item.material || item.params?.material
+        ...item.params, material: item.material || item.params.material
       }));
     }
     for (const constraint of data.constraints || []) assembly.addConstraint(constraint);
