@@ -407,3 +407,30 @@ test("rechaza unidades JSON incompatibles y conserva lectura de archivos v1 en m
     /Unidades de archivo no compatibles/
   );
 });
+
+
+test("rechaza registros y parámetros de componentes JSON mal formados antes de restaurar", () => {
+  const validComponent = new AssemblyComponent("json-part", "Pieza", "plate", {
+    width: 10, height: 10, thickness: 2
+  }).toJSON();
+  const base = { schemaVersion: 1, units: "mm", components: [validComponent] };
+
+  assert.throws(() => MachineryAssembly.fromJSON([]), /Archivo de ensamblaje inválido/);
+  assert.throws(
+    () => MachineryAssembly.fromJSON({ ...base, components: [null] }),
+    /Componente 0 inválido: debe ser un objeto/
+  );
+  assert.throws(
+    () => MachineryAssembly.fromJSON({ ...base, components: [[]] }),
+    /Componente 0 inválido: debe ser un objeto/
+  );
+  for (const params of [null, [], "dimensiones"]) {
+    assert.throws(
+      () => MachineryAssembly.fromJSON({
+        ...base,
+        components: [{ ...validComponent, params }]
+      }),
+      /Parámetros del componente 0 inválidos: se requiere un objeto/
+    );
+  }
+});
