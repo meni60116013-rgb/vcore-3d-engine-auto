@@ -159,15 +159,33 @@ test("CAD browser flow: geometry, transforms, persistence and exports", { timeou
     assert.ok(stl.length > 400, "STL export should contain triangle data for all solids");
     assert.match(stl.slice(0, 32), /solid/i);
 
-    // Parse the ASCII STL structure instead of only checking its file header.
-    const facetCount = (stl.match(/^\s*facet normal\s+/gm) || []).length;
-    const vertices = [...stl.matchAll(/^\s*vertex\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)\s*$/gm)]
-      .map(match => match.slice(1).map(Number));
-    assert.ok(facetCount > 100, "STL should contain a substantial triangle mesh");
-    assert.equal(vertices.length, facetCount * 3, "each STL facet must contain exactly three vertices");
-    assert.ok(vertices.flat().every(Number.isFinite), "STL vertices must all be finite numbers");
-    for (let index = 0; index < vertices.length; index += 3) {
-      const [a, b, c] = vertices.slice(index, index + 3);
+    // Parse the complete ASCII STL grammar independently of the exporter.
+    const stlLines = stl.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    assert.match(stlLines[0] || "", /^solid(?:\s|$)/i, "STL must start with a solid record");
+    assert.match(stlLines.at(-1) || "", /^endsolid(?:\s|$)/i, "STL must end with an endsolid record");
+
+    let cursor = 1;
+    let facetCount = 0;
+    while (cursor < stlLines.length - 1) {
+      const facetMatch = stlLines[cursor++].match(/^facet\s+normal\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)$/i);
+      assert.ok(facetMatch, "Every facet must begin with a valid normal record");
+      const normal = facetMatch.slice(1).map(Number);
+      assert.ok(normal.every(Number.isFinite), "Facet normals must be finite");
+      assert.ok(Math.abs(Math.hypot(...normal) - 1) < 1e-4, "Facet normals must be normalized");
+      assert.equal(stlLines[cursor++]?.toLowerCase(), "outer loop", "Every facet must open an outer loop");
+
+      const vertices = [];
+      for (let vertexIndex = 0; vertexIndex < 3; vertexIndex += 1) {
+        const vertexMatch = stlLines[cursor++]?.match(/^vertex\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)$/i);
+        assert.ok(vertexMatch, "Every facet must contain exactly three vertex records");
+        const vertex = vertexMatch.slice(1).map(Number);
+        assert.ok(vertex.every(Number.isFinite), "STL vertices must be finite");
+        vertices.push(vertex);
+      }
+      assert.equal(stlLines[cursor++]?.toLowerCase(), "endloop", "Every facet must close its outer loop");
+      assert.equal(stlLines[cursor++]?.toLowerCase(), "endfacet", "Every facet must close");
+
+      const [a, b, c] = vertices;
       const ab = b.map((value, axis) => value - a[axis]);
       const ac = c.map((value, axis) => value - a[axis]);
       const cross = [
@@ -176,8 +194,12 @@ test("CAD browser flow: geometry, transforms, persistence and exports", { timeou
         ab[0] * ac[1] - ab[1] * ac[0]
       ];
       const twiceArea = Math.hypot(...cross);
-      assert.ok(twiceArea > 1e-10, `STL contains a degenerate triangle at facet ${index / 3}: ${JSON.stringify([a, b, c])}`);
+      assert.ok(twiceArea > 1e-10, "STL must not contain degenerate triangles");
+      const normalAlignment = (cross[0] * normal[0] + cross[1] * normal[1] + cross[2] * normal[2]) / twiceArea;
+      assert.ok(normalAlignment > 0.999, "Facet normals must match vertex winding");
+      facetCount += 1;
     }
+    assert.ok(facetCount > 100, "STL should contain a substantial triangle mesh");
 
     // Local persistence must survive a reload and restore all components.
     await page.locator("#save").click();
