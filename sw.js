@@ -1,45 +1,43 @@
-const CACHE_NAME = 'vcore-cad-v2';
-const ASSETS = [
-  './',
-  './index.html',
-  './manifest.json',
-  './src/geometryEngine.js',
-  'https://unpkg.com/three@0.160.0/build/three.module.js'
-];
+const CACHE_NAME = "vcore-cad-v4";
+const CORE_ASSETS = ["./", "./index.html", "./manifest.json", "./src/geometryEngine.js"];
+const TRUSTED_CDN_ORIGIN = "https://unpkg.com";
+const TRUSTED_CDN_PREFIX = "/three@0.160.0/";
 
-self.addEventListener('install', (e) => {
-  self.skipWaiting();
-  e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+self.addEventListener("install", event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(CORE_ASSETS))
+      .then(() => self.skipWaiting())
   );
 });
 
-self.addEventListener('activate', (e) => {
-  e.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            console.log('[SW] Eliminando caché obsoleta:', key);
-            return caches.delete(key);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
+self.addEventListener("activate", event => {
+  event.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(key => key.startsWith("vcore-cad-") && key !== CACHE_NAME).map(key => caches.delete(key))))
+      .then(() => self.clients.claim())
   );
 });
 
-self.addEventListener('fetch', (e) => {
-  // Network First con fallback a Cache para evitar congelamientos por versiones previas
-  e.respondWith(
-    fetch(e.request)
-      .then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-          const clone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
-        }
-        return networkResponse;
-      })
-      .catch(() => caches.match(e.request))
-  );
+self.addEventListener("fetch", event => {
+  const request = event.request;
+  if (request.method !== "GET") return;
+
+  const url = new URL(request.url);
+  const sameOrigin = url.origin === self.location.origin;
+  const trustedCdn = url.origin === TRUSTED_CDN_ORIGIN && url.pathname.startsWith(TRUSTED_CDN_PREFIX);
+  if (!sameOrigin && !trustedCdn) return;
+
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    try {
+      const response = await fetch(request);
+      if (response.ok && (sameOrigin || response.type === "cors")) {
+        await cache.put(request, response.clone());
+      }
+      return response;
+    } catch {
+      return (await cache.match(request)) || Response.error();
+    }
+  })());
 });
