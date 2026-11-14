@@ -40,13 +40,12 @@ test("PWA caches the app shell and only the pinned Three.js CDN modules", () => 
 
 
 test("CI pins a Playwright-supported Ubuntu runner", () => {
-  assert.match(workflow, /runs-on:\\s*ubuntu-24\\.04/);
-  assert.match(workflow, /playwright@1\\.56\\.1/);
+  assert.ok(workflow.includes("runs-on: ubuntu-24.04"));
+  assert.ok(workflow.includes("playwright@1.56.1"));
 });
 
-
 test("CI runs on upgrade branch pushes and PR lifecycle events", () => {
-  assert.match(workflow, /branches:\\s*\\[main, \\"audit\\/\\*\\*\\", \\"upgrade\\/\\*\\*\\"\\]/);
-  assert.match(workflow, /types:\\s*\\[opened, reopened, ready_for_review\\]/);
-  assert.match(workflow, /github\\.event\\.pull_request\\.head\\.ref \\|\\| github\\.ref_name/);
+  assert.ok(workflow.includes('branches: [main, "audit/**", "upgrade/**"]'));
+  assert.ok(workflow.includes("types: [opened, reopened, ready_for_review]"));
+  assert.ok(workflow.includes("github.event.pull_request.head.ref || github.ref_name"));
 });
