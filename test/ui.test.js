@@ -43,3 +43,10 @@ test("CI pins a Playwright-supported Ubuntu runner", () => {
   assert.match(workflow, /runs-on:\\s*ubuntu-24\\.04/);
   assert.match(workflow, /playwright@1\\.56\\.1/);
 });
+
+
+test("CI runs on upgrade branch pushes and PR lifecycle events", () => {
+  assert.match(workflow, /branches:\\s*\\[main, \\"audit\\/\\*\\*\\", \\"upgrade\\/\\*\\*\\"\\]/);
+  assert.match(workflow, /types:\\s*\\[opened, reopened, ready_for_review\\]/);
+  assert.match(workflow, /github\\.event\\.pull_request\\.head\\.ref \\|\\| github\\.ref_name/);
+});

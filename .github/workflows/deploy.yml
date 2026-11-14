@@ -2,16 +2,17 @@ name: VCORE 3D Validation and Source Bundle
 
 on:
   push:
-    branches: [main, "audit/**"]
+    branches: [main, "audit/**", "upgrade/**"]
   pull_request:
     branches: [main]
+    types: [opened, reopened, ready_for_review]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: vcore-3d-validation-${{ github.ref }}
+  group: vcore-3d-validation-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
