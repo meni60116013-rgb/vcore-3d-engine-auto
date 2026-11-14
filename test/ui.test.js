@@ -37,3 +37,9 @@ test("PWA caches the app shell and only the pinned Three.js CDN modules", () => 
   assert.ok(serviceWorker.includes("url.origin === TRUSTED_CDN_ORIGIN"));
   assert.ok(serviceWorker.includes("url.pathname.startsWith(TRUSTED_CDN_PREFIX)"));
 });
+
+
+test("CI pins a Playwright-supported Ubuntu runner", () => {
+  assert.match(workflow, /runs-on:\\s*ubuntu-24\\.04/);
+  assert.match(workflow, /playwright@1\\.56\\.1/);
+});
