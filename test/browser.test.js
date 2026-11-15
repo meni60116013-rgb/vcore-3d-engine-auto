@@ -60,13 +60,13 @@ test("CAD browser flow: geometry, transforms, persistence and exports", { timeou
 
     // Verify the actual mobile media-query layout and a touch-driven control.
     assert.equal(await page.evaluate(() => window.matchMedia("(max-width: 800px)").matches), true);
-    assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector("main")).gridTemplateColumns.trim().split(/\\s+/).length), 1);
+    assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector("main")).gridTemplateColumns.trim().split(/\s+/).length), 1);
     await page.locator("#home").tap();
 
     // Verify the workspace reflows for landscape/tablet width, then return to portrait.
     await page.setViewportSize({ width: 844, height: 390 });
     assert.equal(await page.evaluate(() => window.matchMedia("(max-width: 800px)").matches), false);
-    assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector("main")).gridTemplateColumns.trim().split(/\\s+/).length), 2);
+    assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector("main")).gridTemplateColumns.trim().split(/\s+/).length), 2);
     await page.setViewportSize({ width: 390, height: 844 });
     assert.equal(await page.evaluate(() => window.matchMedia("(max-width: 800px)").matches), true);
 
