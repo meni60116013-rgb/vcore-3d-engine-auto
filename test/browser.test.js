@@ -45,6 +45,9 @@ test("CAD browser flow: geometry, transforms, persistence and exports", { timeou
     });
     const page = await browser.newPage({
       viewport: { width: 390, height: 844 },
+      deviceScaleFactor: 2,
+      isMobile: true,
+      hasTouch: true,
       acceptDownloads: true,
       serviceWorkers: "block"
     });
@@ -54,6 +57,18 @@ test("CAD browser flow: geometry, transforms, persistence and exports", { timeou
     const address = server.address();
     await page.goto(`http://127.0.0.1:${address.port}/`, { waitUntil: "domcontentloaded" });
     await page.locator("#viewport canvas").waitFor({ timeout: 30_000 });
+
+    // Verify the actual mobile media-query layout and a touch-driven control.
+    assert.equal(await page.evaluate(() => window.matchMedia("(max-width: 800px)").matches), true);
+    assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector("main")).gridTemplateColumns.trim().split(/\\s+/).length), 1);
+    await page.locator("#home").tap();
+
+    // Verify the workspace reflows for landscape/tablet width, then return to portrait.
+    await page.setViewportSize({ width: 844, height: 390 });
+    assert.equal(await page.evaluate(() => window.matchMedia("(max-width: 800px)").matches), false);
+    assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector("main")).gridTemplateColumns.trim().split(/\\s+/).length), 2);
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.equal(await page.evaluate(() => window.matchMedia("(max-width: 800px)").matches), true);
 
     // Invalid geometry must be rejected without adding a component.
     await page.locator("#p2").fill("20");
