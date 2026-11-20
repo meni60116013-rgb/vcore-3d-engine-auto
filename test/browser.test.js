@@ -214,7 +214,7 @@ test("CAD browser flow: geometry, transforms, persistence and exports", { timeou
       assert.ok(normalAlignment > 0.999, "Facet normals must match vertex winding");
       facetCount += 1;
     }
-    assert.ok(facetCount > 100, "STL should contain a substantial triangle mesh");
+    assert.ok(facetCount > 100, `STL should contain a substantial triangle mesh; received ${facetCount} facets`);
 
     // Local persistence must survive a reload and restore all components.
     await page.locator("#save").click();
