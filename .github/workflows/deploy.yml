@@ -2,36 +2,46 @@ name: VCORE 3D Validation and Source Bundle
 
 on:
   push:
-    branches: [main, "audit/**"]
+    branches: [main, "audit/**", "upgrade/**"]
   pull_request:
     branches: [main]
+    types: [opened, reopened, ready_for_review]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: vcore-3d-validation-${{ github.ref }}
+  group: vcore-3d-validation-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7.1.0
         with:
           node-version: "22"
 
       - name: Validate JavaScript syntax
         run: node --check src/geometryEngine.js
 
-      - name: Run engine tests
+      - name: Run engine and contract tests
         run: npm test
+
+      - name: Install pinned Playwright for browser tests
+        run: npm install --no-save --package-lock=false playwright@1.56.1
+
+      - name: Install Chromium for browser tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Run CAD browser workflow tests
+        run: npm run test:browser
 
       - name: Validate JSON manifests
         run: |
@@ -42,12 +52,12 @@ jobs:
         run: |
           set -eu
           mkdir -p dist
-          tar -czf dist/vcore-3d-engine-source.tar.gz index.html manifest.json package.json src test
+          tar -czf dist/vcore-3d-engine-source.tar.gz index.html manifest.json package.json sw.js src test README.md docs/TECHNICAL_LIMITS.md
           tar -tzf dist/vcore-3d-engine-source.tar.gz >/dev/null
           sha256sum dist/vcore-3d-engine-source.tar.gz | tee dist/SHA256SUMS
 
       - name: Upload source bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: vcore-3d-engine-source
           path: |
